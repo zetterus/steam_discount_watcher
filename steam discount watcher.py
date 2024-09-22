@@ -4,8 +4,9 @@ import datetime as dt
 from bs4 import BeautifulSoup
 import requests
 import json
-import schedule
-import time
+from apscheduler.schedulers.background import BackgroundScheduler
+
+scheduler = BackgroundScheduler()
 
 
 # #remove streamlit hamburger (& any other elements)
@@ -57,7 +58,20 @@ def query_check():
         # You can optionally clear the input fields here for a better user experience.
 
 
-def watcher():  # нужно сделать запись результатов не в файл а не в таблицу
+# run watcher through planner function
+def start_watcher():
+    global scheduled_time, selected_days
+    scheduler.add_job(
+        watcher,
+        'cron',
+        hour=scheduled_time.hour,
+        minute=scheduled_time.minute,
+        day_of_week=','.join(selected_days_cron)  # Формат: 'mon,tue,wed'
+    )
+    scheduler.start()
+
+
+def watcher():  # нужно сделать запись результатов не в файл а в таблицу
     # Начальный номер страницы
     page_number = 0
     page_count = 100  # Количество игр на одной странице, больше 100 не даёт?
@@ -87,14 +101,14 @@ def watcher():  # нужно сделать запись результатов 
 
             # Если результатов нет, завершаем цикл
             if results_html == "\r\n<!-- List Items -->\r\n<!-- End List Items -->\r\n":
-                print("Конец результатов поиска")
+                print("Search end")
                 break
 
             # Парсим HTML с помощью BeautifulSoup
             soup = BeautifulSoup(results_html, 'html.parser')
-            games_list = soup.find_all("a", class_="search_result_row")
+            games_found = soup.find_all("a", class_="search_result_row")
 
-            for game in games_list:
+            for game in games_found:
                 game_name = game.find("span", class_="title").text
                 game_link = game.get("href")
                 try:
@@ -104,25 +118,28 @@ def watcher():  # нужно сделать запись результатов 
                     game_data = [game_number, game_name, game_discount, discount_final_price, discount_original_price,
                                  game_link]
                 except:
-                    game_data = [game_number, game_name, "it's", "a", "bundle",
-                                 game_link]
+                    game_data = [game_number, game_name, "N/A", "N/A", "N/A", game_link]
 
                 game_number += 1
                 games_list.append(game_data)
 
             # Переходим к следующей странице
+            print(F"page {page_number} proceeded")
             page_number += page_count
         else:
             st.write(f"Query error: {response.status_code}")
             break
 
     # Создаем DataFrame
-    df = pd.DataFrame(games_list, columns=["Game Name", "Discount", "Discounted Price", "Original Price", "Game Link"])
+    st.write("creating dataframe")
+    df = pd.DataFrame(games_list,
+                      columns=["№", "Game Name", "Discount", "Discounted Price", "Original Price", "Game Link"])
 
     # Изменяем индекс, чтобы начинался с 1
     df.index = range(1, len(df) + 1)
 
     # Отображаем DataFrame в Streamlit
+    st.write("writing dataframe")
     st.dataframe(df)
 
 
@@ -145,30 +162,53 @@ if 'running' not in st.session_state:
     submit_btn_status, run_btn_status = False, False
 else:
     submit_btn_status, run_btn_status = False, False
-    # submit_btn_status, run_btn_status = True, True
 
 # 1st column
 # genres ids
 col1.table(genres_df.set_index(genres_df.columns[0]))
+days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+selected_days = col1.multiselect("Select the days of the week:", days_of_week, default=['Monday'])
+day_mapping = {
+    'Monday': 'mon',
+    'Tuesday': 'tue',
+    'Wednesday': 'wed',
+    'Thursday': 'thu',
+    'Friday': 'fri',
+    'Saturday': 'sat',
+    'Sunday': 'sun'
+}
+selected_days_cron = [day_mapping[day] for day in selected_days]  # Преобразуем выбранные дни в формат cron
 
 # 2nd column
 # genre choose, discount, check time, check button
+
 # app status display
 if st.session_state.running:
     col2.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
 else:
     col2.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
     game_tag_id = col2.text_input("Enter game tag id:")
+
+    # Кнопка запуска submit запросов и запуск планировщика
     with col2:
         subcol1, subcol2 = st.columns(2)
-        submit_btn = subcol1.button("Submit request", on_click=query_check, disabled=submit_btn_status)
-        run_btn = subcol2.button("Run watcher now", on_click=watcher, disabled=run_btn_status)
-is_discounted = col2.radio("Search for discounted?", options=("yes", "no"))
-scheduled_time = col2.time_input("Input check time(example 14:30):", value=dt.time(12, 0), step=300)
 
-# schedule.every().day.at(scheduled_time).do(watcher)
-#
-#
-# while True:
-#     schedule.run_pending()
-#     time.sleep(60)  # Проверять каждые 60 секунд
+        is_discounted = col2.radio("Search for discounted?", options=("yes", "no"), index=0)
+        scheduled_time = col2.time_input("Select the time to run the task (e.g., 14:30):", value=dt.time(12, 0), step=300)
+
+        submit_btn = subcol1.button("Submit request")
+        run_btn = subcol2.button("Run watcher now")
+
+        if submit_btn:
+            query_check()  # Проверяем ввод пользователя
+            if st.session_state.running:
+                start_watcher()  # Запускаем планировщик
+                st.write("Watcher successfully scheduled.")
+        elif run_btn:
+            query_check()  # Проверяем ввод пользователя
+            if st.session_state.running:
+                watcher()
+                st.write("Watcher successfully started.")
+
+
+
