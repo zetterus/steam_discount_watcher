@@ -11,7 +11,7 @@ scheduler = BackgroundScheduler()
 
 # set page title
 st.set_page_config(page_title="Steam discount watcher")
-#remove streamlit hamburger (& any other elements)
+# remove streamlit hamburger (& any other elements)
 st.markdown("""
 <style>
 .st-emotion-cache-yfhhig.ef3psqc5
@@ -20,6 +20,8 @@ visibility: hidden;
 }
 </style>
 """, unsafe_allow_html=True)
+
+
 # # completely removes header
 # .st-emotion-cache-h4xjwg.ezrtsby2
 # {
@@ -37,7 +39,7 @@ def query_check():
 
     # Check game_tag_id is an integer
     try:
-        game_tag_id = int(st.session_state.game_tag_id)
+        st.session_state.game_tag_id = int(st.session_state.game_tag_id)
     except ValueError:
         st.write("Error: game tag id must be an integer.")
         valid = False
@@ -91,7 +93,7 @@ def watcher():
     # добавляем игры в словарь
     while True:
         # Формируем URL для каждой страницы
-        url = f"https://store.steampowered.com/search/results/?query&start={page_number}&count={page_count}&dynamic_data=&sort_by=_ASC&tags={game_tag_id}&snr=1_7_7_2300_7&specials={is_discounted}&infinite=1"
+        url = f"https://store.steampowered.com/search/results/?query&start={page_number}&count={page_count}&dynamic_data=&sort_by=_ASC&tags={st.session_state.game_tag_id}&snr=1_7_7_2300_7&specials={st.session_state.is_discounted}&infinite=1"
 
         # Отправляем запрос на сервер
         response = requests.get(url)
@@ -135,8 +137,7 @@ def watcher():
             st.write(f"Query error: {response.status_code}")
             break
 
-    # Создаем DataFrame
-    st.write("creating dataframe")
+    # creating dataframe
     df = pd.DataFrame(games_list,
                       columns=["№", "Game Name", "Discount", "Discounted Price", "Original Price", "Game Link"])
 
@@ -144,7 +145,6 @@ def watcher():
     df.index = range(1, len(df) + 1)
 
     # Отображаем DataFrame в Streamlit
-    st.write("writing dataframe")
     st.dataframe(df)
 
     st.session_state.task_done = True
@@ -186,9 +186,14 @@ col2.table(genres_df.set_index(genres_df.columns[0]))
 if st.session_state.running:
     col1.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
 
-    if st.session_state.task_done:
-        col1.button("Watcher task completed! Click to restart.")
-
+    # Once the button is pressed, the form is hidden, but the task continues
+    if st.session_state.submit_btn_pressed:
+        col1.write("Watcher has been scheduled.")
+        col1.write("Waiting for the scheduled task to run...")
+        start_watcher()
+    elif st.session_state.run_btn_pressed:
+        col1.write("Watcher is running immediately...")
+        watcher()
 
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
@@ -233,10 +238,3 @@ else:
             col2.write("Watcher successfully started.")
             time.sleep(1)
             st.rerun()
-
-    # Once the button is pressed, the form is hidden, but the task continues
-    if st.session_state.submit_btn_pressed:
-        col1.write("Watcher has been scheduled.")
-        col1.write("Waiting for the scheduled task to run...")
-    elif st.session_state.run_btn_pressed:
-        col1.write("Watcher is running immediately...")
