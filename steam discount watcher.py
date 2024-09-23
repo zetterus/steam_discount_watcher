@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 import pandas as pd
 import datetime as dt
@@ -8,16 +9,17 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 scheduler = BackgroundScheduler()
 
-
-# #remove streamlit hamburger (& any other elements)
-# st.markdown("""
-# <style>
-# .st-emotion-cache-yfhhig.ef3psqc5
-# {
-# visibility: hidden;
-# }
-# </style>
-# """, unsafe_allow_html=True)
+# set page title
+st.set_page_config(page_title="Steam discount watcher")
+#remove streamlit hamburger (& any other elements)
+st.markdown("""
+<style>
+.st-emotion-cache-yfhhig.ef3psqc5
+{
+visibility: hidden;
+}
+</style>
+""", unsafe_allow_html=True)
 # # completely removes header
 # .st-emotion-cache-h4xjwg.ezrtsby2
 # {
@@ -29,49 +31,52 @@ def query_check():
     """
     This function checks the validity of user input and displays messages accordingly.
     """
-    global game_tag_id, is_discounted, scheduled_time  # Access global variables
+    # global st.session_state.game_tag_id, st.session_state.is_discounted, st.session_state.scheduled_time  # Access global variables
 
     valid = True  # Flag to indicate valid input
 
     # Check game_tag_id is an integer
     try:
-        game_tag_id = int(game_tag_id)
+        game_tag_id = int(st.session_state.game_tag_id)
     except ValueError:
         st.write("Error: game tag id must be an integer.")
         valid = False
 
     # Check is_discounted is either "yes" or "no"
-    if is_discounted not in ("yes", "no"):
+    if st.session_state.is_discounted not in ("yes", "no"):
         st.write("Error: discount option must be 'yes' or 'no'.")
         valid = False
 
     # Check scheduled_time is a valid time object
-    if not isinstance(scheduled_time, dt.time):
+    if not isinstance(st.session_state.scheduled_time, dt.time):
         st.write("Error: invalid time format. Please use the time picker.")
         valid = False
 
     if valid:
         st.session_state.running = True
-        st.write("Query seems valid!")
+        col2.write("Query seems valid!")
     else:
         st.write("Please fix the errors mentioned above.")
+        st.session_state.running = False
+        time.sleep(5)
+        st.rerun()
         # You can optionally clear the input fields here for a better user experience.
 
 
 # run watcher through planner function
 def start_watcher():
-    global scheduled_time, selected_days
+    # global scheduled_time, selected_days
     scheduler.add_job(
         watcher,
         'cron',
-        hour=scheduled_time.hour,
-        minute=scheduled_time.minute,
-        day_of_week=','.join(selected_days_cron)  # Формат: 'mon,tue,wed'
+        hour=st.session_state.scheduled_time.hour,
+        minute=st.session_state.scheduled_time.minute,
+        day_of_week=','.join(st.session_state.selected_days_cron)  # Формат: 'mon,tue,wed'
     )
     scheduler.start()
 
 
-def watcher():  # нужно сделать запись результатов не в файл а в таблицу
+def watcher():
     # Начальный номер страницы
     page_number = 0
     page_count = 100  # Количество игр на одной странице, больше 100 не даёт?
@@ -142,10 +147,25 @@ def watcher():  # нужно сделать запись результатов 
     st.write("writing dataframe")
     st.dataframe(df)
 
+    st.session_state.task_done = True
 
-st.markdown("<h4 style='text-align: center;'>WARNING! Frequent usage may cause block. Use at your own risk.</h4>",
-            unsafe_allow_html=True)
-st.markdown("---")
+
+# st.markdown("<h4 style='text-align: center;'>WARNING! Frequent usage may cause block. Use at your own risk.</h4>",
+#             unsafe_allow_html=True)
+# st.markdown("---")
+
+# app status checkup
+if 'running' not in st.session_state:
+    st.session_state.running = False
+
+if 'task_done' not in st.session_state:
+    st.session_state.task_done = False
+
+if 'submit_btn_pressed' not in st.session_state:
+    st.session_state.submit_btn_pressed = False
+
+if 'run_btn_pressed' not in st.session_state:
+    st.session_state.run_btn_pressed = False
 
 genres_df = pd.DataFrame({
     "genres": ["Action", "Indie", "Adventure", "Casual", "RPG", "Strategy", "Simulation", "Early Access",
@@ -156,59 +176,67 @@ genres_df = pd.DataFrame({
 # columns
 col1, col2 = st.columns(2)
 
-# app status checkup
-if 'running' not in st.session_state:
-    st.session_state.running = False
-    submit_btn_status, run_btn_status = False, False
-else:
-    submit_btn_status, run_btn_status = False, False
+# 2nd column
+# genres ids
+col2.table(genres_df.set_index(genres_df.columns[0]))
 
 # 1st column
-# genres ids
-col1.table(genres_df.set_index(genres_df.columns[0]))
-days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-selected_days = col1.multiselect("Select the days of the week:", days_of_week, default=['Monday'])
-day_mapping = {
-    'Monday': 'mon',
-    'Tuesday': 'tue',
-    'Wednesday': 'wed',
-    'Thursday': 'thu',
-    'Friday': 'fri',
-    'Saturday': 'sat',
-    'Sunday': 'sun'
-}
-selected_days_cron = [day_mapping[day] for day in selected_days]  # Преобразуем выбранные дни в формат cron
-
-# 2nd column
 # genre choose, discount, check time, check button
-
 # app status display
 if st.session_state.running:
-    col2.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
+    col1.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
+
+    if st.session_state.task_done:
+        col1.button("Watcher task completed! Click to restart.")
+
+
 else:
-    col2.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
-    game_tag_id = col2.text_input("Enter game tag id:")
+    col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
+    st.session_state.game_tag_id = col1.text_input("Enter game tag id:")
+    st.session_state.is_discounted = col1.radio("Search for discounted?", options=("yes", "no"), index=0)
+    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    selected_days = col1.multiselect("Select the days of the week:", days_of_week, default=['Monday'])
+    day_mapping = {
+        'Monday': 'mon',
+        'Tuesday': 'tue',
+        'Wednesday': 'wed',
+        'Thursday': 'thu',
+        'Friday': 'fri',
+        'Saturday': 'sat',
+        'Sunday': 'sun'
+    }
+    st.session_state.selected_days_cron = [day_mapping[day] for day in
+                                           selected_days]  # convert selected days to cron format
+    st.session_state.scheduled_time = col1.time_input("Select the time to run the task (e.g., 14:30):",
+                                                      value=dt.time(12, 0),
+                                                      step=300)
 
-    # Кнопка запуска submit запросов и запуск планировщика
-    with col2:
+    with col1:
         subcol1, subcol2 = st.columns(2)
-
-        is_discounted = col2.radio("Search for discounted?", options=("yes", "no"), index=0)
-        scheduled_time = col2.time_input("Select the time to run the task (e.g., 14:30):", value=dt.time(12, 0), step=300)
 
         submit_btn = subcol1.button("Submit request")
         run_btn = subcol2.button("Run watcher now")
 
+        # Manage button presses
         if submit_btn:
-            query_check()  # Проверяем ввод пользователя
-            if st.session_state.running:
-                start_watcher()  # Запускаем планировщик
-                st.write("Watcher successfully scheduled.")
+            st.session_state.submit_btn_pressed = True
+            st.session_state.running = True  # Assuming the task starts running when the form is submitted
+            col2.markdown("---")
+            col2.write("Watcher successfully scheduled.")
+            time.sleep(1)
+            st.rerun()
+
         elif run_btn:
-            query_check()  # Проверяем ввод пользователя
-            if st.session_state.running:
-                watcher()
-                st.write("Watcher successfully started.")
+            st.session_state.run_btn_pressed = True
+            st.session_state.running = True
+            col2.markdown("---")
+            col2.write("Watcher successfully started.")
+            time.sleep(1)
+            st.rerun()
 
-
-
+    # Once the button is pressed, the form is hidden, but the task continues
+    if st.session_state.submit_btn_pressed:
+        col1.write("Watcher has been scheduled.")
+        col1.write("Waiting for the scheduled task to run...")
+    elif st.session_state.run_btn_pressed:
+        col1.write("Watcher is running immediately...")
