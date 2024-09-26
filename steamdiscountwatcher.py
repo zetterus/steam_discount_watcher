@@ -35,9 +35,8 @@ def query_check():
     valid = True  # Flag to indicate valid input
 
     # Check game_tag_id is an integer
-    try:
-        st.session_state.game_tag_id = int(st.session_state.game_tag_id)
-    except ValueError:
+
+    if st.session_state.game_tag_id != int(st.session_state.game_tag_id):
         col1.write("Error: game tag id must be an integer.")
         valid = False
 
@@ -149,10 +148,6 @@ def watcher():
     st.session_state.task_done = True
 
 
-# st.markdown("<h4 style='text-align: center;'>WARNING! Frequent usage may cause block. Use at your own risk.</h4>",
-#             unsafe_allow_html=True)
-# st.markdown("---")
-
 # app status checkup
 if 'running' not in st.session_state:
     st.session_state.running = False
@@ -192,7 +187,7 @@ if st.session_state.running:
         start_watcher()
     elif st.session_state.run_btn_pressed:
         col1.write("Watcher is running immediately...")
-        watcher()
+        # watcher()
 
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
