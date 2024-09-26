@@ -9,8 +9,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 scheduler = BackgroundScheduler()
 
-# set page title
-st.set_page_config(page_title="Steam discount watcher")
 # remove streamlit hamburger (& any other elements)
 st.markdown("""
 <style>
@@ -33,7 +31,6 @@ def query_check():
     """
     This function checks the validity of user input and displays messages accordingly.
     """
-    # global st.session_state.game_tag_id, st.session_state.is_discounted, st.session_state.scheduled_time  # Access global variables
 
     valid = True  # Flag to indicate valid input
 
@@ -41,28 +38,30 @@ def query_check():
     try:
         st.session_state.game_tag_id = int(st.session_state.game_tag_id)
     except ValueError:
-        st.write("Error: game tag id must be an integer.")
+        col1.write("Error: game tag id must be an integer.")
         valid = False
 
     # Check is_discounted is either "yes" or "no"
     if st.session_state.is_discounted not in ("yes", "no"):
-        st.write("Error: discount option must be 'yes' or 'no'.")
+        col1.write("Error: discount option must be 'yes' or 'no'.")
         valid = False
 
     # Check scheduled_time is a valid time object
     if not isinstance(st.session_state.scheduled_time, dt.time):
-        st.write("Error: invalid time format. Please use the time picker.")
+        col1.write("Error: invalid time format.")
         valid = False
 
     if valid:
         st.session_state.running = True
         col2.write("Query seems valid!")
     else:
-        st.write("Please fix the errors mentioned above.")
+        col1.write("Please fix the errors mentioned above.")
         st.session_state.running = False
         time.sleep(5)
         st.rerun()
         # You can optionally clear the input fields here for a better user experience.
+
+    return True
 
 
 # run watcher through planner function
@@ -73,45 +72,45 @@ def start_watcher():
         'cron',
         hour=st.session_state.scheduled_time.hour,
         minute=st.session_state.scheduled_time.minute,
-        day_of_week=','.join(st.session_state.selected_days_cron)  # Формат: 'mon,tue,wed'
+        day_of_week=','.join(st.session_state.selected_days_cron)  # Format: 'mon,tue,wed'
     )
     scheduler.start()
 
 
 def watcher():
-    # Начальный номер страницы
+    # Starting page number
     page_number = 0
-    page_count = 100  # Количество игр на одной странице, больше 100 не даёт?
+    page_count = 100  # Games quantity per page, no more than 100?
     game_number = 1
 
-    # заголовки датафрейма
+    # dataframe headers
     columns = ["№", "Game Name", "Discount", "Discounted Price", "Original Price", "Game Link"]
 
-    # создаём словарь с играми
+    # games list initialization
     games_list = []
 
-    # добавляем игры в словарь
+    # adding games to list
     while True:
-        # Формируем URL для каждой страницы
+        # formating url for each page
         url = f"https://store.steampowered.com/search/results/?query&start={page_number}&count={page_count}&dynamic_data=&sort_by=_ASC&tags={st.session_state.game_tag_id}&snr=1_7_7_2300_7&specials={st.session_state.is_discounted}&infinite=1"
 
-        # Отправляем запрос на сервер
+        # sending query to server
         response = requests.get(url)
 
-        # Проверяем статус ответа
+        # response check
         if response.status_code == 200:
-            # Парсим JSON ответ
+            # JSON reply parsing
             data = json.loads(response.text)
 
-            # Извлекаем HTML из ключа "results_html"
+            # extracting HTML by key "results_html"
             results_html = data.get('results_html', '')
 
-            # Если результатов нет, завершаем цикл
+            # if no results found cycle ends
             if results_html == "\r\n<!-- List Items -->\r\n<!-- End List Items -->\r\n":
                 print("Search end")
                 break
 
-            # Парсим HTML с помощью BeautifulSoup
+            #  HTML parsing with BeautifulSoup
             soup = BeautifulSoup(results_html, 'html.parser')
             games_found = soup.find_all("a", class_="search_result_row")
 
@@ -130,7 +129,7 @@ def watcher():
                 game_number += 1
                 games_list.append(game_data)
 
-            # Переходим к следующей странице
+            # continue to next page
             print(F"page {page_number} proceeded")
             page_number += page_count
         else:
@@ -141,10 +140,10 @@ def watcher():
     df = pd.DataFrame(games_list,
                       columns=["№", "Game Name", "Discount", "Discounted Price", "Original Price", "Game Link"])
 
-    # Изменяем индекс, чтобы начинался с 1
+    # changing index to start from 1
     df.index = range(1, len(df) + 1)
 
-    # Отображаем DataFrame в Streamlit
+    # display DataFrame in Streamlit
     st.dataframe(df)
 
     st.session_state.task_done = True
@@ -224,6 +223,7 @@ else:
 
         # Manage button presses
         if submit_btn:
+            query_check()
             st.session_state.submit_btn_pressed = True
             st.session_state.running = True  # Assuming the task starts running when the form is submitted
             col2.markdown("---")
@@ -232,6 +232,7 @@ else:
             st.rerun()
 
         elif run_btn:
+            query_check()
             st.session_state.run_btn_pressed = True
             st.session_state.running = True
             col2.markdown("---")
