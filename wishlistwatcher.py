@@ -39,7 +39,8 @@ def query_check():
         valid = False
 
     try:
-        if not (0 <= st.session_state.scheduled_time.hour < 24) or not (0 <= st.session_state.scheduled_time.minute < 60):
+        if not (0 <= st.session_state.scheduled_time.hour < 24) or not (
+                0 <= st.session_state.scheduled_time.minute < 60):
             raise ValueError("Invalid time.")
     except ValueError:
         st.write("Error: time is invalid.")
@@ -51,8 +52,8 @@ def query_check():
     else:
         st.write("Please fix the errors mentioned above.")
         st.session_state.running = False
-        # time.sleep(5)
-        # st.rerun()
+        time.sleep(5)
+        st.rerun()
 
 
 def start_watcher():
@@ -89,28 +90,35 @@ def personal_watcher():
         if response.status_code == 200:
 
             games_data = json.loads(response.text)
-            print(games_data)
-            for game_id, game_info in games_data.items():
-                game_name = game_info.get("name")
-                game_price = game_info["subs"][0].get("price") if game_info.get("subs") else "N/A"
-                game_discount = game_info["subs"][0].get("discount_pct") if game_info.get("subs") else "N/A"
-                game_tags = game_info.get("tags")
-                try:
-                    if st.session_state.game_tag in game_tags or st.session_state.game_tag == "All":
-                        if game_discount:
-                            game_data = [game_number, game_name, game_discount, game_price, game_tags,
-                                         F"https://store.steampowered.com/app/{game_id}"]
-                            print(1, game_data)
-                except:
-                    st.write(game_name, "write error")
-                    print(game_name, "write error")
+            if games_data:
 
-                print(2, game_data)
-                games_list.append(game_data)
-                game_number += 1
+                for game_id, game_info in games_data.items():
+                    game_name = game_info.get("name")
+                    game_price = game_info["subs"][0].get("price") if game_info.get("subs") else "N/A"
+                    game_discount = game_info["subs"][0].get("discount_pct") if game_info.get("subs") else "N/A"
+                    game_tags = game_info.get("tags")
+                    try:
+                        # Ensure game_data is always initialized
+                        game_data = None
+                        if st.session_state.game_tag in game_tags or st.session_state.game_tag == "All":
+                            if game_discount != "N/A":
+                                game_data = [game_number, game_name, game_discount, game_price, game_tags,
+                                             F"https://store.steampowered.com/app/{game_id}"]
 
-            print(F"Page {page} processed.")  # TODO: убрать
-            page += 1
+                                game_number += 1
+
+                            # Only append if game_data was successfully created
+                            if game_data:
+                                games_list.append(game_data)
+
+                    except:
+                        st.write(game_name, "write error")
+
+                page += 1
+
+            else:
+                st.write("Search end")
+                break
 
         else:
             st.write(f"Query error: {response.status_code}")
@@ -205,8 +213,8 @@ else:
             st.session_state.running = True  # Assuming the task starts running when the form is submitted
             col2.markdown("---")
             col2.write("Watcher successfully scheduled.")
-            # time.sleep(5)
-            # st.rerun()
+            time.sleep(5)
+            st.rerun()
 
         elif run_btn:
             query_check()
@@ -214,20 +222,5 @@ else:
             st.session_state.running = True
             col2.markdown("---")
             col2.write("Watcher successfully started.")
-            # time.sleep(5)
-            # st.rerun()
-
-    # while True:
-    #     try:
-    #         st.session_state.user_id = input("Enter user steam SteamID64:")  # 76561198120742945
-    #         st.session_state.user_id == int(st.session_state.user_id)
-    #         st.session_state.game_tag = input(
-    #             "Action|Indie|Adventure|Casual|RPG|Strategy|Simulation|Early Access|Free to Play|Sports|All\nEnter game tag:")
-    #         st.session_state.game_tag == str(st.session_state.game_tag)
-    #         st.session_state.scheduled_time = input("Input check time(example 14:30):")
-    #         0 < int(st.session_state.scheduled_time.split(":")[0]) < 24
-    #         0 < int(st.session_state.scheduled_time.split(":")[1]) < 60
-    #         st.write("Input accepted")
-    #         break
-    #     except:
-    #         st.write("Invalid user.. input")
+            time.sleep(5)
+            st.rerun()
