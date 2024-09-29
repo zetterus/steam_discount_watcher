@@ -35,8 +35,7 @@ def query_check():
     valid = True  # Flag to indicate valid input
 
     # Check game_tag_id is an integer
-
-    if st.session_state.game_tag_id != int(st.session_state.game_tag_id):
+    if not st.session_state.game_tag_id.isdigit():
         col1.write("Error: game tag id must be an integer.")
         valid = False
 
@@ -81,9 +80,6 @@ def watcher():
     page_number = 0
     page_count = 100  # Games quantity per page, no more than 100?
     game_number = 1
-
-    # dataframe headers
-    columns = ["№", "Game Name", "Discount", "Discounted Price", "Original Price", "Game Link"]
 
     # games list initialization
     games_list = []
@@ -187,7 +183,7 @@ if st.session_state.running:
         start_watcher()
     elif st.session_state.run_btn_pressed:
         col1.write("Watcher is running immediately...")
-        # watcher()
+        watcher()
 
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
