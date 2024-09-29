@@ -8,8 +8,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
-if not scheduler.running:
-    scheduler.start()
 
 # Remove Streamlit hamburger (& any other elements)
 st.markdown("""
@@ -54,11 +52,10 @@ def query_check():
 
 def start_watcher():
     """Function to schedule the watcher."""
-    # if not scheduler.running:
-    #     scheduler.start()
-
+    if scheduler.running:
+        scheduler.start()
     # Ensure only one job is scheduled (if needed)
-    if not scheduler.get_jobs():
+    if scheduler.get_jobs():
         scheduler.add_job(
             personal_watcher,
             'cron',
