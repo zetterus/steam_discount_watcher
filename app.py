@@ -8,7 +8,3 @@ watcher_wishlist = st.Page("wishlistwatcher.py", title="Wishlist watcher", icon=
 pg = st.navigation([watcher_genre, watcher_wishlist])
 pg.run()
 
-
-# TODO: добавить поиск по вишлисту, сделать две страницы для каждого скрипта
-#   реализовать авторизацию
-#   реализовать сохранение параметров поиска в профиле пользователя
