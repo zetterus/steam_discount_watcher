@@ -209,7 +209,7 @@ else:
     with col1:
         subcol1, subcol2 = st.columns(2)
 
-        submit_btn = subcol1.button("Submit request")
+        submit_btn = subcol1.button("Schedule query", disabled=True)
         run_btn = subcol2.button("Run watcher now")
 
         # Manage button presses

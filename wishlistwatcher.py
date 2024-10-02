@@ -63,7 +63,8 @@ def start_watcher():
             minute=st.session_state.scheduled_time.minute,
             day_of_week=','.join(st.session_state.selected_days_cron)
         )
-    col1.write("Watcher scheduled successfully!")
+
+    col1.write("Waiting for the scheduled task to run...")
 
 
 def personal_watcher():
@@ -128,7 +129,7 @@ col2.table(genres_df)
 if st.session_state.running:
     col1.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
     if st.session_state.submit_btn_pressed:
-        col1.write("Waiting for the scheduled task to run...")
+        col1.write("Watcher scheduled successfully!")
         start_watcher()
     elif st.session_state.run_btn_pressed:
         col1.write("Watcher is running immediately...")
@@ -147,11 +148,12 @@ else:
                    'Saturday': 'sat', 'Sunday': 'sun'}
     st.session_state.selected_days_cron = [day_mapping[day] for day in selected_days]
     st.session_state.scheduled_time = col1.time_input("Select the time to run the task (e.g., 14:30):",
-                                                      value=dt.time(12, 0), step=300)
+                                                      value=dt.time(12, 0), step=60)
 
     with col1:
         subcol1, subcol2 = st.columns(2)
-        submit_btn = subcol1.button("Submit request")
+
+        submit_btn = subcol1.button("Schedule query", disabled=True)
         run_btn = subcol2.button("Run watcher now")
 
         if submit_btn:
