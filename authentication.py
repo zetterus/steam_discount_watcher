@@ -1,58 +1,52 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-import pandas as pd
 import yaml
 from yaml.loader import SafeLoader
 
-# Загрузка конфигурации из YAML файла
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
-# Создание хешей паролей (если еще не сделано)
-# ... (код для хеширования паролей)
+# Pre-hashing all plain text passwords once
+stauth.Hasher.hash_passwords(config['credentials'])
 
-# Инициализация аутентификатора
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     config['cookie']['key'],
     config['cookie']['expiry_days'],
-    auto_hash=True
+    auto_hash=False
 )
 
+# login widget
+try:
+    authenticator.login(clear_on_submit=True, key="Login")
+except Exception as e:
+    st.error(e)
 
-# Функция для регистрации нового пользователя
-def register_user():
-    new_user = st.text_input('Username')
-    new_password = st.text_input('Password', type='password')
-    if st.button('Register'):
-        pass
-
-
-# Функция для восстановления пароля
-def reset_password():
-    email = st.text_input('Enter your email')
-    if st.button('Reset password'):
-        pass
-
-
-# Основной блок кода
+# authenticating users and logout button
 if st.session_state['authentication_status']:
+    authenticator.logout()
     st.write(f'Welcome *{st.session_state["name"]}*')
-    # Здесь будет отображаться основное содержимое приложения для авторизованных пользователей
-else:
-    # Форма авторизации
-    result = authenticator.login()
-    if result:
-        name, authentication_status, username = result
-    else:
-        # Обработка случая, когда авторизация не удалась
-        st.error('Ошибка авторизации')
+    st.title('Some content')
+elif st.session_state['authentication_status'] is False:
+    st.error('Username/password is incorrect')
+elif st.session_state['authentication_status'] is None:
+    st.warning('Please enter your username and password')
 
-    # Если авторизация не прошла, предлагаем зарегистрироваться или восстановить пароль
-    if authentication_status == False:
-        st.error('Username/password is incorrect')
-        if st.button('Register'):
-            register_user()
-        if st.button('Forgot password?'):
-            reset_password()
+# reset password widget
+if st.session_state['authentication_status']:
+    try:
+        if authenticator.reset_password(st.session_state['username']):
+            st.success('Password modified successfully')
+    except Exception as e:
+        st.error(e)
+
+# new user registration widget
+try:
+    email_of_registered_user, \
+    username_of_registered_user, \
+    name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized'])
+    if email_of_registered_user:
+        st.success('User registered successfully')
+except Exception as e:
+    st.error(e)

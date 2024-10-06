@@ -1,9 +1,20 @@
 cookie:
-  expiry_days: 30
-  key: some_signature_key # Must be a string
-  name: some_cookie_name
+  expiry_days: 1
+  key: s6,W![PC**lSTY4~v\1G # Must be a string
+  name: preregistertest
 credentials:
   usernames:
+    zetter:
+      email: zetter.vitrolic@gmail.com
+      failed_login_attempts: 0 # Will be managed automatically
+      first_name: zettus
+      last_name: zettas
+      logged_in: False # Will be managed automatically
+      password: rfrf # Will be hashed automatically
+      roles: # Optional
+        - admin
+        - editor
+        - viewer
     jsmith:
       email: jsmith@gmail.com
       failed_login_attempts: 0 # Will be managed automatically
@@ -36,4 +47,3 @@ oauth2: # Optional
     tenant_id: # To be filled
 pre-authorized: # Optional
   emails:
-  - melsby@gmail.com
