@@ -1,49 +1,47 @@
 cookie:
-  expiry_days: 1
-  key: s6,W![PC**lSTY4~v\1G
-  name: preregistertest
+  expiry_days: 30
+  key: some_key
+  name: some_cookie_name
 credentials:
   usernames:
+    dbaldwin:
+      email: dbaldwin@gmail.com
+      failed_login_attempts: 0
+      logged_in: false
+      name: David Baldwin
+      password: $2b$12$E9/bCaN/r8sN/FV2l8NpgOgspUBAp7UAVU6BgsXJzp/pW8gQWCprC
     jsmith:
       email: jsmith@gmail.com
       failed_login_attempts: 0
-      first_name: John
-      last_name: Smith
       logged_in: false
-      password: $2b$12$dncJFE5FkV4pqi77XG4/puPCTzTViWrkfpYC/K.hid38.CBtgFKoa
-      roles:
-      - admin
-      - editor
-      - viewer
+      name: John Smith
+      password: $2b$12$iWlVOac3uujRvTrXDi6wructXftKmo/GyQd6SMu5FmyX306kH.yFO
     rbriggs:
       email: rbriggs@gmail.com
       failed_login_attempts: 0
-      first_name: Rebecca
-      last_name: Briggs
       logged_in: false
-      password: $2b$12$Q6mQ14y5X4BwZN126mpMj.LCnVV9f7GqgwZXfzzAd1DBRgtjf2CL2
-      roles:
-      - viewer
+      name: Rebecca Briggs
+      password: $2b$12$uNaTgvGPG9rMbzOJHYaPQePw0DUfp1qHBrSq6l4O304qani6pKFpm
+    rcouper:
+      email: rcouper@gmail.com
+      failed_login_attempts: 0
+      logged_in: false
+      name: Ross Couper
+      password: $2b$12$Tir/PbHVmmnt5kgNxgOwMuxNIb2fv2pJ.q71TW8ekvbugCqkye4yu
+    zettec:
+      email: kovaseros@gmail.com
+      first_name: asdhasjdh
+      last_name: asdasdhj
+      logged_in: false
+      password: $2b$12$ZGcdfzDgWLogKF3Ojwo4YOB4HK8ODUPSErulz8Cuhp/F.09VEDopy
+      password_hint: asdad
+      roles: null
     zetter:
       email: zetter.vitrolic@gmail.com
       failed_login_attempts: 0
-      first_name: zettus
-      last_name: zettas
       logged_in: false
-      password: $2b$12$.bBIqmKLDDqxbJox1mDlsuWQQHPCj0.PnA2ZvbZUDlpLIxtmj6Gae
-      roles:
-      - admin
-      - editor
-      - viewer
-    zettos:
-      email: kovaseros@gmail.com
-      failed_login_attempts: 2
-      first_name: zettis
-      last_name: zettos
-      logged_in: false
-      password: $2b$12$uRgKiKdLf7vBldX/s8DFcuUw/RihXtgaQ7DQYwhONnKmZpP5b1Yq.
-      password_hint: rfrf
-      roles: null
+      name: zettas zettos
+      password: $2b$12$uLGf0ZwOnckb1XOMLRsw9.qcIMQokNC9/2va7BCXpiYW3wgMTmjRS
 oauth2:
   google:
     client_id: null
