@@ -32,14 +32,14 @@ credentials:
       email: kovaseros@gmail.com
       first_name: asdhasjdh
       last_name: asdasdhj
-      logged_in: true
+      logged_in: false
       password: $2b$12$ZGcdfzDgWLogKF3Ojwo4YOB4HK8ODUPSErulz8Cuhp/F.09VEDopy
       password_hint: asdad
       roles: null
     zetter:
       email: zetter.vitrolic@gmail.com
       failed_login_attempts: 0
-      logged_in: false
+      logged_in: true
       name: zettas zettos
       password: $2b$12$uLGf0ZwOnckb1XOMLRsw9.qcIMQokNC9/2va7BCXpiYW3wgMTmjRS
 oauth2:
