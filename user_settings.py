@@ -18,6 +18,26 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                ResetError,
                                                UpdateError)
 
+
+def session_state_to_dict(session_state):
+    # Convert SessionStateProxy object to a dictionary
+    data = {}
+    for key, value in session_state.items():
+        # Handle different data types appropriately
+        data[key] = value
+    return {st.session_state["str_var"]: data}
+
+
+# Custom deserialization function
+def dict_to_session_state(data):
+    # Convert dictionary back to a SessionStateProxy object
+    session_state = st.session_state
+    for key, value in data.items():
+        # Set values in SessionStateProxy
+        session_state[key] = value
+    return session_state
+
+
 # Pre-hashing all plain text passwords once
 # stauth.Hasher.hash_passwords(config['credentials'])
 
@@ -28,6 +48,9 @@ from streamlit_authenticator.utilities import (CredentialsError,
 # Creating a login widget
 try:
     st.session_state.authenticator.login()
+    with open('test_settings.py', 'r', encoding='utf-8') as file3:
+        data = yaml.load(file3, Loader=SafeLoader)
+        st.session_state = dict_to_session_state(data[st.session_state["name"]])
 except LoginError as e:
     st.error(e)
 
@@ -41,17 +64,18 @@ except LoginError as e:
 #     st.error(e)
 # unable to github secret store politics?
 
+
 # Authenticating user
 config = st.session_state.config
 authenticator = st.session_state.authenticator
 if st.session_state['authentication_status']:
     st.write(f'Welcome *{st.session_state["name"]}*')
-    save_btn = st.button("Save watcher settings")
-    if save_btn:
-        user_settings = {config["name"]: st.session_state.game_tag_id, st.session_state.is_discounted, st.session_state.selected_days_cron, st.session_state.scheduled_time}
-        with open('user_settings.py', 'w', encoding='utf-8') as file2:
-            yaml.dump(user_settings, file2, default_flow_style=False)
-    authenticator.logout()
+    if st.button("Save watcher settings"):
+        settings = session_state_to_dict(st.session_state)
+        with open('test_settings.py', 'w', encoding='utf-8') as file2:
+            yaml.dump(settings, file2, default_flow_style=False)
+    if authenticator.logout():
+        st.session_state.clear()
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
 elif st.session_state['authentication_status'] is None:

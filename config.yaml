@@ -32,7 +32,7 @@ credentials:
       email: kovaseros@gmail.com
       first_name: asdhasjdh
       last_name: asdasdhj
-      logged_in: false
+      logged_in: true
       password: $2b$12$ZGcdfzDgWLogKF3Ojwo4YOB4HK8ODUPSErulz8Cuhp/F.09VEDopy
       password_hint: asdad
       roles: null
