@@ -48,8 +48,7 @@ if st.session_state['authentication_status']:
     st.write(f'Welcome *{st.session_state["name"]}*')
     save_btn = st.button("Save watcher settings")
     if save_btn:
-        user_settings = {config["name"]: st.session_state.game_tag_id,
-                         st.session_state.is_discounted, st.session_state.selected_days_cron, st.session_state.scheduled_time}
+        user_settings = {config["name"]: st.session_state.game_tag_id, st.session_state.is_discounted, st.session_state.selected_days_cron, st.session_state.scheduled_time}
         with open('user_settings.py', 'w', encoding='utf-8') as file2:
             yaml.dump(user_settings, file2, default_flow_style=False)
     authenticator.logout()
