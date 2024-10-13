@@ -5,6 +5,8 @@ import requests
 import json
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
+from user_settings import *
+
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
@@ -42,7 +44,6 @@ def query_check():
         valid = False
 
     if valid:
-        st.session_state.running = True
         st.write("Query is valid!")
     else:
         st.write("Please fix the errors mentioned above.")
@@ -112,10 +113,6 @@ def personal_watcher():
 # Initialize session state
 if 'running' not in st.session_state:
     st.session_state.running = False
-if 'submit_btn_pressed' not in st.session_state:
-    st.session_state.submit_btn_pressed = False
-if 'run_btn_pressed' not in st.session_state:
-    st.session_state.run_btn_pressed = False
 
 # Genre list
 genres = ["Action", "Indie", "Adventure", "Casual", "RPG", "Strategy", "Simulation", "Early Access", "Free to Play",
@@ -128,15 +125,10 @@ col2.table(genres_df)
 
 if st.session_state.running:
     col1.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
-    if st.session_state.submit_btn_pressed:
-        col1.write("Watcher scheduled successfully!")
-        start_watcher()
-    elif st.session_state.run_btn_pressed:
+    if st.session_state.run_btn_pressed:
         col1.write("Watcher is running immediately...")
         personal_watcher()
-    if col1.button("Restart Watcher"):
-        st.session_state.clear()
-        st.rerun()
+
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
     st.session_state.user_id = col1.text_input("Enter user SteamID64: 76561198120742945")
@@ -153,19 +145,17 @@ else:
     with col1:
         subcol1, subcol2 = st.columns(2)
 
-        submit_btn = subcol1.button("Schedule query", disabled=True)
-        run_btn = subcol2.button("Run watcher now")
-
-        if submit_btn:
+        if subcol1.button("Save settings"):
             query_check()
-            st.session_state.submit_btn_pressed = True
-            st.session_state.running = True
-            time.sleep(2)
-            st.rerun()
-
-        elif run_btn:
+            save_user_settings()
+        if subcol1.button("Load settings"):
+            try:
+                user_settings = load_user_settings()
+                apply_settings_to_widgets(user_settings)
+            except:
+                st.write("No settings found")
+        if subcol2.button("Run watcher now"):
             query_check()
-            st.session_state.run_btn_pressed = True
             st.session_state.running = True
             time.sleep(2)
             st.rerun()

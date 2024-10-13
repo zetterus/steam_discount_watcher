@@ -1,15 +1,9 @@
-"""
-Script description: This script imports tests the Streamlit-Authenticator package.
-
-Libraries imported:
-- yaml: Module implementing the data serialization used for human readable documents.
-- streamlit: Framework used to build pure Python web applications.
-"""
-
 import yaml
 import streamlit as st
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
+import datetime as dt
+import os
 from streamlit_authenticator.utilities import (CredentialsError,
                                                ForgotError,
                                                Hasher,
@@ -19,14 +13,26 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                UpdateError)
 
 
+# Loading config file
+with open('config.yaml', 'r', encoding='utf-8') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+# Creating the authenticator object
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
+
+
 def session_state_to_dict(session_state):
     # Convert SessionStateProxy object to a dictionary
     data = {}
     for key, value in session_state.items():
         # Handle different data types appropriately
         data[key] = value
-    print(st.session_state)
-    return {st.session_state["name"]: data}
+    return {st.session_state: data}
 
 
 # Custom deserialization function
@@ -36,29 +42,94 @@ def dict_to_session_state(data):
     for key, value in data.items():
         # Set values in SessionStateProxy
         session_state[key] = value
-    print(session_state)
     return session_state
 
 
-# Pre-hashing all plain text passwords once
-# stauth.Hasher.hash_passwords(config['credentials'])
+def save_user_settings():
+    # loading data from YAML-file
+    with open('config.yaml', 'r', encoding='utf-8') as file:
+        data = yaml.safe_load(file)
 
-# authenticator = stauth.Authenticate(
-#     '../config.yaml'
-# )
+    username = st.session_state["username"]  # current user
+    user_settings = {
+        "game_tag_id": st.session_state.game_tag_id,
+        "is_discounted": st.session_state.is_discounted,
+        "selected_days": st.session_state.selected_days,
+        "selected_days_cron": st.session_state.selected_days_cron,
+        "scheduled_time": st.session_state.scheduled_time.strftime("%H:%M")  # converting time to string
+    }
+
+    # check from which file function runs
+    current_file = os.path.basename(__file__)
+
+    if current_file == "steamdiscountwatcher.py":
+        data["credentials"]["usernames"][username]["settings"]["discount"] = user_settings
+    elif current_file == "wishlistwatcher.py":
+        data["credentials"]["usernames"][username]["settings"]["wishlist"] = user_settings
+    else:
+        st.write("Error: Unknown source file.")
+
+    # saving updated options to YAML-file
+    with open('config.yaml', 'w', encoding='utf-8') as file:
+        yaml.dump(data, file, default_flow_style=False)
+
+    st.write("---")
+    st.write("Settings saved successfully!")
+
+
+def load_user_settings():
+    with open('config.yaml', 'r', encoding='utf-8') as file:
+        data = yaml.safe_load(file)
+
+    username = st.session_state["username"]
+    current_file = os.path.basename(__file__)
+
+    if current_file == "steamdiscountwatcher.py":
+        user_settings = data["credentials"]["usernames"][username].get("settings", {}).get("discount", {})
+    elif current_file == "wishlistwatcher.py":
+        user_settings = data["credentials"]["usernames"][username].get("settings", {}).get("wishlist", {})
+    else:
+        st.write("Error: Unknown source file.")
+        user_settings = {}
+
+    return user_settings
+
+
+def apply_settings_to_widgets(user_settings):
+    if user_settings:
+        st.session_state["game_tag_id"] = user_settings.get("game_tag_id", "")
+        st.session_state["is_discounted_index"] = user_settings.get("is_discounted_index", 0)
+        st.session_state["selected_days"] = user_settings.get("selected_days", [])
+        st.session_state["selected_days_cron"] = user_settings.get("selected_days_cron", [])
+        st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
+                                                                  "%H:%M").time()
+
+        # st.text_input("Enter game tag id:", value=st.session_state["game_tag_id"])
+        # st.radio("Search for discounted?", options=("yes", "no"),
+        #          index=0 if st.session_state["is_discounted"] == "yes" else 1)
+        # st.multiselect("Select the days of the week:",
+        #                options=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        #                default=st.session_state["selected_days_cron"])
+        # st.time_input("Select the time to run the task (e.g., 14:30):", value=st.session_state["scheduled_time"])
+    else:
+        st.write("No settings found for the user.")
+
 
 # Creating a login widget
 try:
-    st.session_state.authenticator.login()
+    authenticator.login()
     with open('config.yaml', 'r', encoding='utf-8') as file3:
         data = yaml.load(file3, Loader=SafeLoader)
-    print(st.session_state.__str__())
+    with open('config.yaml', 'w', encoding='utf-8') as file3:
+        yaml.dump(data, file3, default_flow_style=False)
+    with open('config.yaml', 'r', encoding='utf-8') as file3:
+        data = yaml.load(file3, Loader=SafeLoader)
     try:
-        st.session_state = dict_to_session_state(data["credentials"][st.session_state["username"]])
+        st.session_state = dict_to_session_state(data)
     except:
-        st.write("No user settings stored")
-except LoginError as e:
-    st.error(e)
+        st.write("Can't load user settings")
+except Exception as e:
+    st.write(e)
 
 # # Creating a guest login button
 # try:
@@ -72,21 +143,37 @@ except LoginError as e:
 
 
 # Authenticating user
-config = st.session_state.config
-authenticator = st.session_state.authenticator
 if st.session_state['authentication_status']:
-    st.write(f'Welcome *{st.session_state["name"]}*')
-    if st.button("Save watcher settings"):
-        settings = session_state_to_dict(st.session_state)
-        with open('config.yaml', 'w', encoding='utf-8') as file2:
-            yaml.dump(settings, file2, default_flow_style=False)
+    st.write(f'Welcome **{st.session_state["name"]}**')
+
+    try:
+        st.write("Your stored settings", data["credentials"]["usernames"][st.session_state['username']]["settings"])
+    except:
+        st.write("No user settings stored")
+
     if authenticator.logout():
         st.session_state.clear()
+        st.rerun()
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
 elif st.session_state['authentication_status'] is None:
     st.warning('Please enter your username and password')
 
-# Saving config file
-with open('config.yaml', 'w', encoding='utf-8') as file:
-    yaml.dump(config, file, default_flow_style=False)
+
+# Creating a password reset widget
+if st.session_state['authentication_status']:
+    try:
+        if authenticator.reset_password(st.session_state['username']):
+            st.success('Password modified successfully')
+    except (CredentialsError, ResetError) as e:
+        st.error(e)
+
+# Creating a new user registration widget
+try:
+    (email_of_registered_user,
+     username_of_registered_user,
+     name_of_registered_user) = authenticator.register_user(captcha=False, clear_on_submit=True)
+    if email_of_registered_user:
+        st.success('User registered successfully')
+except RegisterError as e:
+    st.error(e)
