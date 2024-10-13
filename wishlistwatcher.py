@@ -4,6 +4,7 @@ import datetime as dt
 import requests
 import json
 import time
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from user_settings import *
 

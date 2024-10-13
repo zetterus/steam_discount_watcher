@@ -5,8 +5,9 @@ import datetime as dt
 from bs4 import BeautifulSoup
 import requests
 import json
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
-from user_settings import *
+from user_settings import save_user_settings, load_user_settings, apply_settings_to_widgets
 
 scheduler = BackgroundScheduler()
 
@@ -229,10 +230,12 @@ else:
         # Manage button presses
         if subcol1.button("Save settings"):
             if query_check():
-                save_user_settings()
+                save_user_settings(os.path.basename(__file__))
+            else:
+                st.write("query_check not succesfull")
         if subcol1.button("Load settings"):
             try:
-                user_settings = load_user_settings()
+                user_settings = load_user_settings(os.path.basename(__file__))
                 apply_settings_to_widgets(user_settings)
             except:
                 st.write("No settings found")

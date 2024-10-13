@@ -45,7 +45,7 @@ def dict_to_session_state(data):
     return session_state
 
 
-def save_user_settings():
+def save_user_settings(current_filename):
     # loading data from YAML-file
     with open('config.yaml', 'r', encoding='utf-8') as file:
         data = yaml.safe_load(file)
@@ -60,12 +60,12 @@ def save_user_settings():
     }
 
     # check from which file function runs
-    current_file = os.path.basename(__file__)
-
-    if current_file == "steamdiscountwatcher.py":
-        data["credentials"]["usernames"][username]["settings"]["discount"] = user_settings
-    elif current_file == "wishlistwatcher.py":
-        data["credentials"]["usernames"][username]["settings"]["wishlist"] = user_settings
+    # current_file = os.path.basename(__file__)
+    print(F"filename check {current_filename}")
+    if current_filename == "steamdiscountwatcher.py":
+        data["credentials"]["usernames"][username]["settings_discount"] = user_settings
+    elif current_filename == "wishlistwatcher.py":
+        data["credentials"]["usernames"][username]["settings_wishlist"] = user_settings
     else:
         st.write("Error: Unknown source file.")
 
@@ -77,17 +77,17 @@ def save_user_settings():
     st.write("Settings saved successfully!")
 
 
-def load_user_settings():
+def load_user_settings(current_filename):
     with open('config.yaml', 'r', encoding='utf-8') as file:
         data = yaml.safe_load(file)
 
     username = st.session_state["username"]
-    current_file = os.path.basename(__file__)
+    # current_file = os.path.basename(__file__)
 
-    if current_file == "steamdiscountwatcher.py":
-        user_settings = data["credentials"]["usernames"][username].get("settings", {}).get("discount", {})
-    elif current_file == "wishlistwatcher.py":
-        user_settings = data["credentials"]["usernames"][username].get("settings", {}).get("wishlist", {})
+    if current_filename == "steamdiscountwatcher.py":
+        user_settings = data["credentials"]["usernames"][username].get("settings_discount", {})
+    elif current_filename == "wishlistwatcher.py":
+        user_settings = data["credentials"]["usernames"][username].get("settings_wishlist", {})
     else:
         st.write("Error: Unknown source file.")
         user_settings = {}
@@ -130,16 +130,6 @@ try:
         st.write("Can't load user settings")
 except Exception as e:
     st.write(e)
-
-# # Creating a guest login button
-# try:
-#     authenticator.experimental_guest_login('Login with Google', provider='google',
-#                                             oauth2=config['oauth2'])
-#     authenticator.experimental_guest_login('Login with Microsoft', provider='microsoft',
-#                                             oauth2=config['oauth2'])
-# except LoginError as e:
-#     st.error(e)
-# unable to github secret store politics?
 
 
 # Authenticating user

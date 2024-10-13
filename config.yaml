@@ -34,6 +34,15 @@ credentials:
       logged_in: false
       name: z x
       password: rfrf
+      settings_discount:
+        game_tag_id: '599'
+        is_discounted: 'no'
+        scheduled_time: '11:55'
+        selected_days:
+        - Monday
+        selected_days_cron:
+        - mon
+        - sun
 oauth2:
   google:
     client_id: null
