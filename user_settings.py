@@ -3,7 +3,6 @@ import streamlit as st
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import datetime as dt
-import os
 from streamlit_authenticator.utilities import (CredentialsError,
                                                ForgotError,
                                                Hasher,
@@ -51,20 +50,23 @@ def save_user_settings(current_filename):
         data = yaml.safe_load(file)
 
     username = st.session_state["username"]  # current user
-    user_settings = {
-        "game_tag_id": st.session_state.game_tag_id,
-        "is_discounted": st.session_state.is_discounted,
-        "selected_days": st.session_state.selected_days,
-        "selected_days_cron": st.session_state.selected_days_cron,
-        "scheduled_time": st.session_state.scheduled_time.strftime("%H:%M")  # converting time to string
-    }
 
     # check from which file function runs
-    # current_file = os.path.basename(__file__)
-    print(F"filename check {current_filename}")
     if current_filename == "steamdiscountwatcher.py":
+        user_settings = {
+            "game_tag_id": st.session_state.game_tag_id,
+            "is_discounted_index": st.session_state.is_discounted_index,
+            "selected_days_cron": st.session_state.selected_days_cron,
+            "scheduled_time": st.session_state.scheduled_time.strftime("%H:%M")  # converting time to string
+        }
         data["credentials"]["usernames"][username]["settings_discount"] = user_settings
     elif current_filename == "wishlistwatcher.py":
+        user_settings = {
+            "user_id": st.session_state.user_id,
+            "game_tag": st.session_state.game_tag,
+            "selected_days_cron": st.session_state.selected_days_cron,
+            "scheduled_time": st.session_state.scheduled_time.strftime("%H:%M")  # converting time to string
+        }
         data["credentials"]["usernames"][username]["settings_wishlist"] = user_settings
     else:
         st.write("Error: Unknown source file.")
@@ -73,7 +75,6 @@ def save_user_settings(current_filename):
     with open('config.yaml', 'w', encoding='utf-8') as file:
         yaml.dump(data, file, default_flow_style=False)
 
-    st.write("---")
     st.write("Settings saved successfully!")
 
 
@@ -82,7 +83,6 @@ def load_user_settings(current_filename):
         data = yaml.safe_load(file)
 
     username = st.session_state["username"]
-    # current_file = os.path.basename(__file__)
 
     if current_filename == "steamdiscountwatcher.py":
         user_settings = data["credentials"]["usernames"][username].get("settings_discount", {})
@@ -95,22 +95,22 @@ def load_user_settings(current_filename):
     return user_settings
 
 
-def apply_settings_to_widgets(user_settings):
+def apply_settings_to_widgets(user_settings, current_filename):
     if user_settings:
-        st.session_state["game_tag_id"] = user_settings.get("game_tag_id", "")
-        st.session_state["is_discounted_index"] = user_settings.get("is_discounted_index", 0)
-        st.session_state["selected_days"] = user_settings.get("selected_days", [])
-        st.session_state["selected_days_cron"] = user_settings.get("selected_days_cron", [])
-        st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
-                                                                  "%H:%M").time()
-
-        # st.text_input("Enter game tag id:", value=st.session_state["game_tag_id"])
-        # st.radio("Search for discounted?", options=("yes", "no"),
-        #          index=0 if st.session_state["is_discounted"] == "yes" else 1)
-        # st.multiselect("Select the days of the week:",
-        #                options=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-        #                default=st.session_state["selected_days_cron"])
-        # st.time_input("Select the time to run the task (e.g., 14:30):", value=st.session_state["scheduled_time"])
+        if current_filename == "steamdiscountwatcher.py":
+            st.session_state["game_tag_id"] = user_settings.get("game_tag_id", "")
+            st.session_state["is_discounted_index"] = user_settings.get("is_discounted_index", 0)
+            st.session_state["selected_days_cron"] = user_settings.get("selected_days_cron", [])
+            st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
+                                                                      "%H:%M").time()
+        elif current_filename == "wishlistwatcher.py":
+            st.session_state["user_id"] = user_settings.get("user_id", "")
+            st.session_state["game_tag"] = user_settings.get("game_tag", "")
+            st.session_state["selected_days_cron"] = user_settings.get("selected_days_cron", [])
+            st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
+                                                                      "%H:%M").time()
+        else:
+            st.write("Error: Unknown source file.")
     else:
         st.write("No settings found for the user.")
 

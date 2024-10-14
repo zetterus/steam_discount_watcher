@@ -115,6 +115,31 @@ def personal_watcher():
 if 'running' not in st.session_state:
     st.session_state.running = False
 
+if "user_id" not in st.session_state:
+    st.session_state.user_id = ""
+
+if "game_tag" not in st.session_state:
+    st.session_state.game_tag = ""
+
+day_mapping_reverse = {
+    'mon': 'Monday',
+    'tue': 'Tuesday',
+    'wed': 'Wednesday',
+    'thu': 'Thursday',
+    'fri': 'Friday',
+    'sat': 'Saturday',
+    'sun': 'Sunday'
+}
+
+if "selected_days_cron" not in st.session_state:
+    st.session_state.selected_days_cron = ["mon"]
+
+# if "selected_days" not in st.session_state:
+st.session_state.selected_days = [day_mapping_reverse[day] for day in st.session_state.selected_days_cron]
+
+if "scheduled_time" not in st.session_state:
+    st.session_state.scheduled_time = dt.time(12, 0)
+
 # Genre list
 genres = ["Action", "Indie", "Adventure", "Casual", "RPG", "Strategy", "Simulation", "Early Access", "Free to Play",
           "Sports"]
@@ -132,27 +157,37 @@ if st.session_state.running:
 
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
-    st.session_state.user_id = col1.text_input("Enter user SteamID64: 76561198120742945")
-    st.session_state.game_tag = col1.text_input("Enter game genre:")
+    st.session_state.user_id = col1.text_input("Enter user SteamID64(ex., 76561198120742945):", value=st.session_state.user_id)
+    st.session_state.game_tag = col1.text_input("Enter game genre:", value=st.session_state.game_tag)
 
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    selected_days = col1.multiselect("Select the days of the week:", days_of_week, default=['Monday'])
-    day_mapping = {'Monday': 'mon', 'Tuesday': 'tue', 'Wednesday': 'wed', 'Thursday': 'thu', 'Friday': 'fri',
-                   'Saturday': 'sat', 'Sunday': 'sun'}
-    st.session_state.selected_days_cron = [day_mapping[day] for day in selected_days]
+    selected_days = col1.multiselect("Select the days of the week:", days_of_week,
+                                     default=st.session_state.selected_days)
+    day_mapping = {
+        'Monday': 'mon',
+        'Tuesday': 'tue',
+        'Wednesday': 'wed',
+        'Thursday': 'thu',
+        'Friday': 'fri',
+        'Saturday': 'sat',
+        'Sunday': 'sun'
+    }
+    st.session_state.selected_days_cron = [day_mapping[day] for day in
+                                           selected_days]  # convert selected days to cron format
     st.session_state.scheduled_time = col1.time_input("Select the time to run the task (e.g., 14:30):",
-                                                      value=dt.time(12, 0), step=60)
+                                                      value=st.session_state["scheduled_time"], step=300)
 
     with col1:
         subcol1, subcol2 = st.columns(2)
 
         if subcol1.button("Save settings"):
             query_check()
-            save_user_settings()
+            save_user_settings(os.path.basename(__file__))
         if subcol1.button("Load settings"):
             try:
-                user_settings = load_user_settings()
-                apply_settings_to_widgets(user_settings)
+                user_settings = load_user_settings(os.path.basename(__file__))
+                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
+                st.rerun()
             except:
                 st.write("No settings found")
         if subcol2.button("Run watcher now"):

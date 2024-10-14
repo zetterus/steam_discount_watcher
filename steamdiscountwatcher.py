@@ -143,8 +143,6 @@ def watcher():
     # display DataFrame in Streamlit
     st.dataframe(df)
 
-    st.session_state.task_done = True
-
 
 genres_df = pd.DataFrame({
     "genres": ["Action", "Indie", "Adventure", "Casual", "RPG", "Strategy", "Simulation", "Early Access",
@@ -162,9 +160,6 @@ col2.table(genres_df.set_index(genres_df.columns[0]))
 # app status checkup
 if 'running' not in st.session_state:
     st.session_state.running = False
-
-if 'task_done' not in st.session_state:
-    st.session_state.task_done = False
 
 if "game_tag_id" not in st.session_state:
     st.session_state.game_tag_id = ""
@@ -188,13 +183,11 @@ day_mapping_reverse = {
 if "selected_days_cron" not in st.session_state:
     st.session_state.selected_days_cron = ["mon"]
 
-if "selected_days" not in st.session_state:
-    st.session_state.selected_days = ["Monday"] if not st.session_state.selected_days_cron else [
-        day_mapping_reverse[day] for day in st.session_state.selected_days_cron]
+# if "selected_days" not in st.session_state:
+st.session_state.selected_days = [day_mapping_reverse[day] for day in st.session_state.selected_days_cron]
 
 if "scheduled_time" not in st.session_state:
     st.session_state.scheduled_time = dt.time(12, 0)
-
 
 # 1st column
 # genre choose, discount, check time, check button
@@ -226,7 +219,6 @@ else:
     with col1:
         subcol1, subcol2 = st.columns(2)
 
-
         # Manage button presses
         if subcol1.button("Save settings"):
             if query_check():
@@ -236,7 +228,8 @@ else:
         if subcol1.button("Load settings"):
             try:
                 user_settings = load_user_settings(os.path.basename(__file__))
-                apply_settings_to_widgets(user_settings)
+                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
+                st.rerun()
             except:
                 st.write("No settings found")
         if subcol2.button("Run watcher now"):

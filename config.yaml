@@ -35,14 +35,21 @@ credentials:
       name: z x
       password: rfrf
       settings_discount:
-        game_tag_id: '599'
-        is_discounted: 'no'
-        scheduled_time: '11:55'
-        selected_days:
-        - Monday
+        game_tag_id: '113'
+        is_discounted_index: 1
+        scheduled_time: '12:05'
         selected_days_cron:
         - mon
+        - fri
         - sun
+      settings_wishlist:
+        game_tag: Strategy
+        scheduled_time: '12:30'
+        selected_days_cron:
+        - mon
+        - thu
+        - sat
+        user_id: '76561198120742945'
 oauth2:
   google:
     client_id: null
