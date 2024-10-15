@@ -141,10 +141,13 @@ if st.session_state['authentication_status']:
     try:
         st.write("Your genre watcher settings",
                  data["credentials"]["usernames"][st.session_state['username']]["settings_discount"])
-        st.write("Your genre watcher settings",
+    except:
+        st.write("No genre watcher settings stored")
+    try:
+        st.write("Your wishlist watcher settings",
                  data["credentials"]["usernames"][st.session_state['username']]["settings_wishlist"])
     except:
-        st.write("No user settings stored")
+        st.write("No wishlist watcher settings stored")
 
 
 elif st.session_state['authentication_status'] is False:
