@@ -177,3 +177,4 @@ if not st.session_state['authentication_status']:
 
 with open('config.yaml', 'w') as file:
     yaml.dump(config, file, default_flow_style=False)
+
