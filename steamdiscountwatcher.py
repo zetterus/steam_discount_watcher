@@ -7,7 +7,7 @@ import requests
 import json
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
-from user_settings import save_user_settings, load_user_settings, apply_settings_to_widgets
+from user_settings import *
 
 scheduler = BackgroundScheduler()
 
@@ -104,7 +104,6 @@ def watcher():
 
             # if no results found cycle ends
             if results_html == "\r\n<!-- List Items -->\r\n<!-- End List Items -->\r\n":
-                print("Search end")
                 break
 
             #  HTML parsing with BeautifulSoup
@@ -127,7 +126,6 @@ def watcher():
                 games_list.append(game_data)
 
             # continue to next page
-            print(F"page {page_number} proceeded")
             page_number += page_count
         else:
             st.write(f"Query error: {response.status_code}")
@@ -228,10 +226,11 @@ else:
         if subcol1.button("Load settings"):
             try:
                 user_settings = load_user_settings(os.path.basename(__file__))
-                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
-                st.rerun()
             except:
                 st.write("No settings found")
+            if user_settings:
+                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
+            st.rerun()
         if subcol2.button("Run watcher now"):
             query_check()
             st.session_state.running = True

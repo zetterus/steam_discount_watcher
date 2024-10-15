@@ -181,15 +181,18 @@ else:
         subcol1, subcol2 = st.columns(2)
 
         if subcol1.button("Save settings"):
-            query_check()
-            save_user_settings(os.path.basename(__file__))
+            if query_check():
+                save_user_settings(os.path.basename(__file__))
+            else:
+                st.write("query_check not succesfull")
         if subcol1.button("Load settings"):
             try:
                 user_settings = load_user_settings(os.path.basename(__file__))
-                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
-                st.rerun()
             except:
                 st.write("No settings found")
+            if user_settings:
+                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
+            st.rerun()
         if subcol2.button("Run watcher now"):
             query_check()
             st.session_state.running = True

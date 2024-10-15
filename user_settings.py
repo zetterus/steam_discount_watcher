@@ -110,7 +110,7 @@ def apply_settings_to_widgets(user_settings, current_filename):
             st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
                                                                       "%H:%M").time()
         else:
-            st.write("Error: Unknown source file.")
+            st.write("Error: can't apply settings.")
     else:
         st.write("No settings found for the user.")
 
