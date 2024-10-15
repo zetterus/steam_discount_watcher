@@ -11,7 +11,6 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                ResetError,
                                                UpdateError)
 
-
 # Loading config file
 with open('config.yaml', 'r', encoding='utf-8') as file:
     config = yaml.load(file, Loader=SafeLoader)
@@ -131,24 +130,27 @@ try:
 except Exception as e:
     st.write(e)
 
-
 # Authenticating user
 if st.session_state['authentication_status']:
     st.write(f'Welcome **{st.session_state["name"]}**')
 
-    try:
-        st.write("Your stored settings", data["credentials"]["usernames"][st.session_state['username']]["settings"])
-    except:
-        st.write("No user settings stored")
-
     if authenticator.logout():
         st.session_state.clear()
         st.rerun()
+
+    try:
+        st.write("Your genre watcher settings",
+                 data["credentials"]["usernames"][st.session_state['username']]["settings_discount"])
+        st.write("Your genre watcher settings",
+                 data["credentials"]["usernames"][st.session_state['username']]["settings_wishlist"])
+    except:
+        st.write("No user settings stored")
+
+
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
 elif st.session_state['authentication_status'] is None:
     st.warning('Please enter your username and password')
-
 
 # Creating a password reset widget
 if st.session_state['authentication_status']:
@@ -159,11 +161,16 @@ if st.session_state['authentication_status']:
         st.error(e)
 
 # Creating a new user registration widget
-try:
-    (email_of_registered_user,
-     username_of_registered_user,
-     name_of_registered_user) = authenticator.register_user(captcha=False, clear_on_submit=True)
-    if email_of_registered_user:
-        st.success('User registered successfully')
-except RegisterError as e:
-    st.error(e)
+if not st.session_state['authentication_status']:
+    try:
+        (email_of_registered_user,
+         username_of_registered_user,
+         name_of_registered_user) = authenticator.register_user(captcha=False, clear_on_submit=True)
+        if email_of_registered_user:
+            st.success('User registered successfully')
+    except RegisterError as e:
+        st.error(e)
+
+
+with open('config.yaml', 'w') as file:
+    yaml.dump(config, file, default_flow_style=False)
