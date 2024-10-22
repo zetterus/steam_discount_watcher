@@ -30,10 +30,11 @@ credentials:
       password: $2b$12$Tir/PbHVmmnt5kgNxgOwMuxNIb2fv2pJ.q71TW8ekvbugCqkye4yu
     zettec:
       email: kovaseros@gmail.com
+      failed_login_attempts: 0
       first_name: asd
       last_name: dsa
-      logged_in: false
-      password: $2b$12$cNnObEvbPnOSFy6f71NZ/OD56knDxSaNHIfa07tE3tg4sbSldiSmy
+      logged_in: true
+      password: $2b$12$JgiTsRwEtkRra7vvQzfbJOxrBpRVmzsWiO7RhKadrs2C2m3jr6VoO
       password_hint: RRR
       roles: null
     zetter:

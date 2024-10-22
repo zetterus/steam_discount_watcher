@@ -118,10 +118,10 @@ def apply_settings_to_widgets(user_settings, current_filename):
 # Creating a login widget
 try:
     authenticator.login()
-    with open('config.yaml', 'r', encoding='utf-8') as file3:
-        data = yaml.load(file3, Loader=SafeLoader)
-    with open('config.yaml', 'w', encoding='utf-8') as file3:
-        yaml.dump(data, file3, default_flow_style=False)
+    # with open('config.yaml', 'r', encoding='utf-8') as file3:
+    #     data = yaml.load(file3, Loader=SafeLoader)
+    # with open('config.yaml', 'w', encoding='utf-8') as file3:
+    #     yaml.dump(data, file3, default_flow_style=False)
     with open('config.yaml', 'r', encoding='utf-8') as file3:
         data = yaml.load(file3, Loader=SafeLoader)
     try:
