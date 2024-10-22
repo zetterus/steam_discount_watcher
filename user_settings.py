@@ -1,5 +1,6 @@
 import yaml
 import streamlit as st
+import gspread
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import datetime as dt
