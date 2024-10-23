@@ -1,6 +1,7 @@
 import yaml
 import streamlit as st
 import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import datetime as dt
@@ -12,8 +13,22 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                ResetError,
                                                UpdateError)
 
+# --- Google Sheets Setup ---
+# Define the scope
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+# Add your credentials file (replace 'your-credentials.json' with your file name)
+creds = ServiceAccountCredentials.from_json_keyfile_name("steam-watcher-credentials-db0622d10a00.json", scope)
+
+# Authorize the client sheet
+client = gspread.authorize(creds)
+
+# Open the Google Sheet (replace 'your-google-sheet-name' with your sheet name)
+sheet = client.open("streamlit_watcher_credentials").sheet1  # Use .sheet1 or specify the sheet name
+
+# --- Streamlit and Authentication Setup ---
 # Loading config file
-with open('config.yaml', 'r', encoding='utf-8') as file:
+with open('config.yaml', 'r', encoding='utf-8') as file:  # copy config.yaml contents to secret app's field
     config = yaml.load(file, Loader=SafeLoader)
 
 # Creating the authenticator object
