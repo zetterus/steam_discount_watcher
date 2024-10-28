@@ -1,7 +1,10 @@
 import streamlit as st
-import gspread
 import streamlit_authenticator as stauth
+import gspread
+import yaml
 from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
+from yaml.loader import SafeLoader
 import bcrypt
 
 # Define the scope for Google Sheets
@@ -10,70 +13,55 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 # Load credentials from secrets.toml
 creds_dict = st.secrets["gcp_service_account"]
 
-# Authorize the client with credentials
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+# Use the credentials from `st.secrets`
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"], scopes=scope
+)
+
+# Authorize the client sheet
 client = gspread.authorize(creds)
 
-# Open the Google Sheet
-sheet = client.open("streamlit_watcher_credentials").sheet1
+# Open the Google Sheet using the URL or spreadsheet name from `secrets.toml`
+spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+sheet = client.open_by_url(spreadsheet_url).sheet1
 
-# Function to add a new user with hashed password and settings
-def add_user_to_gsheet(username, email, name, password, settings_discount, settings_wishlist):
-    # Hash the password using bcrypt
-    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-    # Create user dictionary structure
-    user_data = {
-        'username': username,
-        'email': email,
-        'name': name,
-        'password': hashed_password,
-        'failed_login_attempts': 0,
-        'logged_in': False,
-        'settings_discount': settings_discount,
-        'settings_wishlist': settings_wishlist
-    }
+def load_credentials_from_sheet(username=None):
+    users = sheet.get_all_records()  # Get all existing user data
+    credentials = {"usernames": {}}
 
-    # Add the user data to the Google Sheet
-    sheet.append_row([
-        user_data['username'],
-        user_data['email'],
-        user_data['name'],
-        user_data['password'],
-        user_data['failed_login_attempts'],
-        user_data['logged_in'],
-        str(user_data['settings_discount']),
-        str(user_data['settings_wishlist'])
-    ])
+    for user in users:
+        if user["username"] == username:
+            settings_discount = yaml.load(user["settings_discount"], Loader=SafeLoader)
+            settings_wishlist = yaml.load(user["settings_wishlist"], Loader=SafeLoader)
+            credentials["usernames"][username] = {
+                "email": user["email"],
+                "name": user["name"],
+                "password": user["password"],  # Ensure passwords are already hashed
+                "failed_login_attempts": user.get("failed_login_attempts", 0),
+                "logged_in": user.get("logged_in", 0),
+                "settings_discount": {
+                    "game_tag_id": settings_discount.get("game_tag_id", ""),
+                    "is_discounted_index": settings_discount.get("is_discounted_index", 0),
+                    "scheduled_time": settings_discount.get("scheduled_time", "12:00"),
+                    "selected_days_cron": settings_discount.get("selected_days_cron", ""),
+                },
+                "settings_wishlist": {
+                    "user_id": settings_wishlist.get("user_id", ""),
+                    "game_tag": settings_wishlist.get("game_tag", ""),
+                    "scheduled_time": settings_wishlist.get("scheduled_time", "12:00"),
+                    "selected_days_cron": settings_wishlist.get("selected_days_cron", ""),
+                },
+            }
+            return credentials  # Return immediately once user is found
 
-    st.success("User added successfully!")
+    # If user is not found, log an error and return an empty dictionary
+    st.error("No user record found")
+    return credentials
 
-# Example usage to register a user
-if st.button('Register New User'):
-    # Example settings data for discount and wishlist (replace these values with actual data)
-    settings_discount = {
-        "game_tag_id": "113",
-        "is_discounted_index": 1,
-        "scheduled_time": "12:05",
-        "selected_days_cron": ["mon", "fri", "sun"]
-    }
 
-    settings_wishlist = {
-        "user_id": "76561198120742945",
-        "game_tag": "Strategy",
-        "scheduled_time": "12:30",
-        "selected_days_cron": ["mon", "thu", "sat"]
-    }
+cred = load_credentials_from_sheet()
 
-    add_user_to_gsheet(
-        username="zetter",
-        email="zetter.vitrolic@gmail.com",
-        name="z x",
-        password="yourpassword123",  # Plain text password
-        settings_discount=settings_discount,
-        settings_wishlist=settings_wishlist
-    )
+st.write(cred)
+st.write(st.session_state)
 
-# Display current data from Google Sheet
-st.write("Current users in the sheet:")
-st.dataframe(sheet.get_all_records())

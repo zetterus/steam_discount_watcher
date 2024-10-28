@@ -2,6 +2,7 @@ import yaml
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import datetime as dt
@@ -13,31 +14,56 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                ResetError,
                                                UpdateError)
 
-# --- Google Sheets Setup ---
-# Define the scope
+# Define the scope for Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# Add your credentials file (replace 'your-credentials.json' with your file name)
-creds = ServiceAccountCredentials.from_json_keyfile_name("steam-watcher-credentials-db0622d10a00.json", scope)
+# Use the credentials from `st.secrets`
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"], scopes=scope
+)
 
 # Authorize the client sheet
 client = gspread.authorize(creds)
 
-# Open the Google Sheet (replace 'your-google-sheet-name' with your sheet name)
-sheet = client.open("streamlit_watcher_credentials").sheet1  # Use .sheet1 or specify the sheet name
+# Open the Google Sheet using the URL or spreadsheet name from `secrets.toml`
+spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+sheet = client.open_by_url(spreadsheet_url).sheet1
 
-# --- Streamlit and Authentication Setup ---
-# Loading config file
-with open('config.yaml', 'r', encoding='utf-8') as file:  # copy config.yaml contents to secret app's field
-    config = yaml.load(file, Loader=SafeLoader)
 
 # Creating the authenticator object
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
+# Load data from Google Sheets into a dictionary format required by streamlit_authenticator
+def load_credentials_from_sheet(username=None):
+    users = sheet.get_all_records()  # Get all existing user data
+    credentials = {"usernames": {}}
+
+    for user in users:
+        if user["username"] == username:
+            settings_discount = yaml.load(user["settings_discount"], Loader=SafeLoader)
+            settings_wishlist = yaml.load(user["settings_wishlist"], Loader=SafeLoader)
+            credentials["usernames"][username] = {
+                "email": user["email"],
+                "name": user["name"],
+                "password": user["password"],  # Ensure passwords are already hashed
+                "failed_login_attempts": user.get("failed_login_attempts", 0),
+                "logged_in": user.get("logged_in", 0),
+                "settings_discount": {
+                    "game_tag_id": settings_discount.get("game_tag_id", ""),
+                    "is_discounted_index": settings_discount.get("is_discounted_index", 0),
+                    "scheduled_time": settings_discount.get("scheduled_time", "12:00"),
+                    "selected_days_cron": settings_discount.get("selected_days_cron", ""),
+                },
+                "settings_wishlist": {
+                    "user_id": settings_wishlist.get("user_id", ""),
+                    "game_tag": settings_wishlist.get("game_tag", ""),
+                    "scheduled_time": settings_wishlist.get("scheduled_time", "12:00"),
+                    "selected_days_cron": settings_wishlist.get("selected_days_cron", ""),
+                },
+            }
+            return credentials  # Return immediately once user is found
+
+    # If user is not found, log an error and return an empty dictionary
+    st.error("You need to log in.")
+    return credentials
 
 
 def session_state_to_dict(session_state):
@@ -59,88 +85,103 @@ def dict_to_session_state(data):
     return session_state
 
 
-def save_user_settings(current_filename):
-    # loading data from YAML-file
-    with open('config.yaml', 'r', encoding='utf-8') as file:
-        data = yaml.safe_load(file)
+def upsert_user_data(username, name, email, hashed_password, settings_discount=None, settings_wishlist=None):
+    users = sheet.get_all_records()  # Get all existing user data
+    user_exists = False
+    row_index = 0  # Variable to track the row index if the user is found
 
-    username = st.session_state["username"]  # current user
+    # Search for the username in existing records
+    for i, user in enumerate(users, start=2):  # Start at row 2 for data rows
+        if user["username"] == username:
+            user_exists = True
+            row_index = i
+            break
 
-    # check from which file function runs
-    if current_filename == "steamdiscountwatcher.py":
-        user_settings = {
-            "game_tag_id": st.session_state.game_tag_id,
-            "is_discounted_index": st.session_state.is_discounted_index,
-            "selected_days_cron": st.session_state.selected_days_cron,
-            "scheduled_time": st.session_state.scheduled_time.strftime("%H:%M")  # converting time to string
-        }
-        data["credentials"]["usernames"][username]["settings_discount"] = user_settings
-    elif current_filename == "wishlistwatcher.py":
-        user_settings = {
-            "user_id": st.session_state.user_id,
-            "game_tag": st.session_state.game_tag,
-            "selected_days_cron": st.session_state.selected_days_cron,
-            "scheduled_time": st.session_state.scheduled_time.strftime("%H:%M")  # converting time to string
-        }
-        data["credentials"]["usernames"][username]["settings_wishlist"] = user_settings
+    # Prepare the data for the user
+    user_row = [username, name, email, hashed_password, str(settings_discount or {}), str(settings_wishlist or {})]
+
+    # Update if user exists, or append if not
+    if user_exists:
+        # Overwrite the row if user exists
+        sheet.update(f'A{row_index}:H{row_index}', [user_row])
+        st.success(f"Updated data for user '{username}'.")
     else:
-        st.write("Error: Unknown source file.")
-
-    # saving updated options to YAML-file
-    with open('config.yaml', 'w', encoding='utf-8') as file:
-        yaml.dump(data, file, default_flow_style=False)
-
-    st.write("Settings saved successfully!")
+        # Append a new row if user does not exist
+        sheet.append_row(user_row)
+        st.success(f"Added new user '{username}'.")
 
 
-def load_user_settings(current_filename):
-    with open('config.yaml', 'r', encoding='utf-8') as file:
-        data = yaml.safe_load(file)
+def get_user_from_gsheet(username):
+    # Get all records from the sheet
+    users = sheet.get_all_records()
 
-    username = st.session_state["username"]
+    # Search for the username in the records
+    for user in users:
+        if user["username"] == username:
+            return user
 
-    if current_filename == "steamdiscountwatcher.py":
-        user_settings = data["credentials"]["usernames"][username].get("settings_discount", {})
-    elif current_filename == "wishlistwatcher.py":
-        user_settings = data["credentials"]["usernames"][username].get("settings_wishlist", {})
-    else:
-        st.write("Error: Unknown source file.")
-        user_settings = {}
-
-    return user_settings
+    # Return None if user is not found
+    return None
 
 
-def apply_settings_to_widgets(user_settings, current_filename):
+# Define the function to apply settings based on current file
+def apply_settings_to_widgets(username, current_filename):
+    user_settings = get_user_from_gsheet(username)
+
     if user_settings:
         if current_filename == "steamdiscountwatcher.py":
-            st.session_state["game_tag_id"] = user_settings.get("game_tag_id", "")
-            st.session_state["is_discounted_index"] = user_settings.get("is_discounted_index", 0)
-            st.session_state["selected_days_cron"] = user_settings.get("selected_days_cron", [])
-            st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
-                                                                      "%H:%M").time()
+            st.session_state["game_tag_id"] = user_settings.get("settings_discount", {}).get("game_tag_id", "")
+            st.session_state["is_discounted_index"] = user_settings.get("settings_discount", {}).get(
+                "is_discounted_index", 0)
+            st.session_state["selected_days_cron"] = user_settings.get("settings_discount", {}).get(
+                "selected_days_cron", [])
+            scheduled_time = user_settings.get("settings_discount", {}).get("scheduled_time", "12:00")
+            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
+
         elif current_filename == "wishlistwatcher.py":
-            st.session_state["user_id"] = user_settings.get("user_id", "")
-            st.session_state["game_tag"] = user_settings.get("game_tag", "")
-            st.session_state["selected_days_cron"] = user_settings.get("selected_days_cron", [])
-            st.session_state["scheduled_time"] = dt.datetime.strptime(user_settings.get("scheduled_time", "12:00"),
-                                                                      "%H:%M").time()
+            st.session_state["user_id"] = user_settings.get("settings_wishlist", {}).get("user_id", "")
+            st.session_state["game_tag"] = user_settings.get("settings_wishlist", {}).get("game_tag", "")
+            st.session_state["selected_days_cron"] = user_settings.get("settings_wishlist", {}).get(
+                "selected_days_cron", [])
+            scheduled_time = user_settings.get("settings_wishlist", {}).get("scheduled_time", "12:00")
+            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
         else:
             st.write("Error: can't apply settings.")
     else:
         st.write("No settings found for the user.")
 
 
+if "credentials" in st.session_state:
+
+    # Initialize a default config
+    config = {}
+
+    # Check if user logged
+    config = {
+        "credentials": load_credentials_from_sheet(st.session_state["username"]),
+        "cookie": {
+            "name": "auth_cookie",
+            "key": "some_secret_key",
+            "expiry_days": 30,
+        }
+    }
+
+    authenticator = stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"]
+    )
+else:
+    st.write("Can't load config")
+
+
 # Creating a login widget
 try:
     authenticator.login()
-    # with open('config.yaml', 'r', encoding='utf-8') as file3:
-    #     data = yaml.load(file3, Loader=SafeLoader)
-    # with open('config.yaml', 'w', encoding='utf-8') as file3:
-    #     yaml.dump(data, file3, default_flow_style=False)
-    with open('config.yaml', 'r', encoding='utf-8') as file3:
-        data = yaml.load(file3, Loader=SafeLoader)
+    user_data = load_credentials_from_sheet(st.session_state["username"])
     try:
-        st.session_state = dict_to_session_state(data)
+        st.session_state = dict_to_session_state(user_data)
     except:
         st.write("Can't load user settings")
 except Exception as e:
@@ -155,13 +196,14 @@ if st.session_state['authentication_status']:
         st.rerun()
 
     try:
+        st.write(user_data)
         st.write("Your genre watcher settings",
-                 data["credentials"]["usernames"][st.session_state['username']]["settings_discount"])
+                 user_data["credentials"]["usernames"][st.session_state['username']]["settings_discount"])
     except:
         st.write("No genre watcher settings stored")
     try:
         st.write("Your wishlist watcher settings",
-                 data["credentials"]["usernames"][st.session_state['username']]["settings_wishlist"])
+                 user_data["credentials"]["usernames"][st.session_state['username']]["settings_wishlist"])
     except:
         st.write("No wishlist watcher settings stored")
 
@@ -190,7 +232,5 @@ if not st.session_state['authentication_status']:
     except RegisterError as e:
         st.error(e)
 
-
 with open('config.yaml', 'w') as file:
     yaml.dump(config, file, default_flow_style=False)
-
