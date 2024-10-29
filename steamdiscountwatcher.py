@@ -229,7 +229,7 @@ else:
             except:
                 st.write("No settings found")
             if user_settings:
-                apply_settings_to_widgets(user_settings, os.path.basename(__file__))
+                load_and_apply_settings_to_widgets(user_settings, os.path.basename(__file__))
             st.rerun()
         if subcol2.button("Run watcher now"):
             query_check()

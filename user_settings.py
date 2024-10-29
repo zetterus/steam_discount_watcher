@@ -6,6 +6,7 @@ from google.oauth2.service_account import Credentials
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import datetime as dt
+import os
 from streamlit_authenticator.utilities import (CredentialsError,
                                                ForgotError,
                                                Hasher,
@@ -13,6 +14,21 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                RegisterError,
                                                ResetError,
                                                UpdateError)
+
+# Default settings for new users
+DEFAULT_DISCOUNT_SETTINGS = {
+    "game_tag_id": "0",
+    "is_discounted_index": 0,
+    "scheduled_time": "12:00",
+    "selected_days_cron": ["mon", "wed", "fri"],
+}
+
+DEFAULT_WISHLIST_SETTINGS = {
+    "user_id": "",
+    "game_tag": "",
+    "scheduled_time": "12:00",
+    "selected_days_cron": ["tue", "thu", "sat"],
+}
 
 # Define the scope for Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -30,40 +46,31 @@ spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
 sheet = client.open_by_url(spreadsheet_url).sheet1
 
 
-# Creating the authenticator object
-# Load data from Google Sheets into a dictionary format required by streamlit_authenticator
-def load_credentials_from_sheet(username=None):
-    users = sheet.get_all_records()  # Get all existing user data
-    credentials = {"usernames": {}}
+# Define the function to load data from Google Sheets and apply settings based on current file
+def load_and_apply_settings_to_widgets(username, current_filename):
+    user_settings = get_user_from_gsheet(username)
 
-    for user in users:
-        if user["username"] == username:
-            settings_discount = yaml.load(user["settings_discount"], Loader=SafeLoader)
-            settings_wishlist = yaml.load(user["settings_wishlist"], Loader=SafeLoader)
-            credentials["usernames"][username] = {
-                "email": user["email"],
-                "name": user["name"],
-                "password": user["password"],  # Ensure passwords are already hashed
-                "failed_login_attempts": user.get("failed_login_attempts", 0),
-                "logged_in": user.get("logged_in", 0),
-                "settings_discount": {
-                    "game_tag_id": settings_discount.get("game_tag_id", ""),
-                    "is_discounted_index": settings_discount.get("is_discounted_index", 0),
-                    "scheduled_time": settings_discount.get("scheduled_time", "12:00"),
-                    "selected_days_cron": settings_discount.get("selected_days_cron", ""),
-                },
-                "settings_wishlist": {
-                    "user_id": settings_wishlist.get("user_id", ""),
-                    "game_tag": settings_wishlist.get("game_tag", ""),
-                    "scheduled_time": settings_wishlist.get("scheduled_time", "12:00"),
-                    "selected_days_cron": settings_wishlist.get("selected_days_cron", ""),
-                },
-            }
-            return credentials  # Return immediately once user is found
+    if user_settings:
+        if current_filename == "steamdiscountwatcher.py":
+            st.session_state["game_tag_id"] = user_settings.get("settings_discount", {}).get("game_tag_id", "")
+            st.session_state["is_discounted_index"] = user_settings.get("settings_discount", {}).get(
+                "is_discounted_index", 0)
+            st.session_state["selected_days_cron"] = user_settings.get("settings_discount", {}).get(
+                "selected_days_cron", [])
+            scheduled_time = user_settings.get("settings_discount", {}).get("scheduled_time", "12:00")
+            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
 
-    # If user is not found, log an error and return an empty dictionary
-    st.error("You need to log in.")
-    return credentials
+        elif current_filename == "wishlistwatcher.py":
+            st.session_state["user_id"] = user_settings.get("settings_wishlist", {}).get("user_id", "")
+            st.session_state["game_tag"] = user_settings.get("settings_wishlist", {}).get("game_tag", "")
+            st.session_state["selected_days_cron"] = user_settings.get("settings_wishlist", {}).get(
+                "selected_days_cron", [])
+            scheduled_time = user_settings.get("settings_wishlist", {}).get("scheduled_time", "12:00")
+            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
+        else:
+            st.write("Error: can't apply settings.")
+    else:
+        st.write("No settings found for the user.")
 
 
 def session_state_to_dict(session_state):
@@ -124,68 +131,66 @@ def get_user_from_gsheet(username):
     return None
 
 
-# Define the function to apply settings based on current file
-def apply_settings_to_widgets(username, current_filename):
-    user_settings = get_user_from_gsheet(username)
+def get_user_data(username):
+    """Fetches and structures data for the specified username from Google Sheets."""
+    records = sheet.get_all_records()  # Fetch all user data
+    for record in records:
+        if record["username"] == username:
+            # Deserialize YAML for settings
+            settings_discount = yaml.load(record.get("settings_discount", "{}"), Loader=SafeLoader)
+            settings_wishlist = yaml.load(record.get("settings_wishlist", "{}"), Loader=SafeLoader)
 
-    if user_settings:
-        if current_filename == "steamdiscountwatcher.py":
-            st.session_state["game_tag_id"] = user_settings.get("settings_discount", {}).get("game_tag_id", "")
-            st.session_state["is_discounted_index"] = user_settings.get("settings_discount", {}).get(
-                "is_discounted_index", 0)
-            st.session_state["selected_days_cron"] = user_settings.get("settings_discount", {}).get(
-                "selected_days_cron", [])
-            scheduled_time = user_settings.get("settings_discount", {}).get("scheduled_time", "12:00")
-            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
-
-        elif current_filename == "wishlistwatcher.py":
-            st.session_state["user_id"] = user_settings.get("settings_wishlist", {}).get("user_id", "")
-            st.session_state["game_tag"] = user_settings.get("settings_wishlist", {}).get("game_tag", "")
-            st.session_state["selected_days_cron"] = user_settings.get("settings_wishlist", {}).get(
-                "selected_days_cron", [])
-            scheduled_time = user_settings.get("settings_wishlist", {}).get("scheduled_time", "12:00")
-            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
-        else:
-            st.write("Error: can't apply settings.")
-    else:
-        st.write("No settings found for the user.")
+            return {
+                "email": record["email"],
+                "name": record["name"],
+                "password": record["password"],  # Password should be hashed
+                "failed_login_attempts": record.get("failed_login_attempts", 0),
+                "logged_in": record.get("logged_in", False),
+                "settings_discount": settings_discount or {},
+                "settings_wishlist": settings_wishlist or {}
+            }
+    return None
 
 
-if "credentials" in st.session_state:
+def load_credentials_from_sheet():
+    """Loads and structures credentials from Google Sheets."""
+    credentials = {"usernames": {}}
 
-    # Initialize a default config
-    config = {}
+    # Retrieve all user records from Google Sheets
+    users = sheet.get_all_records()
 
-    # Check if user logged
-    config = {
-        "credentials": load_credentials_from_sheet(st.session_state["username"]),
-        "cookie": {
-            "name": "auth_cookie",
-            "key": "some_secret_key",
-            "expiry_days": 30,
+    for user in users:
+        username = user["username"]
+        credentials["usernames"][username] = {
+            "email": user["email"],
+            "name": user["name"],
+            "password": user["password"],  # Ensure passwords are hashed
+            "failed_login_attempts": user.get("failed_login_attempts", 0),
+            "logged_in": user.get("logged_in", False),
+            "settings_discount": yaml.load(user.get("settings_discount", "{}"), Loader=SafeLoader),
+            "settings_wishlist": yaml.load(user.get("settings_wishlist", "{}"), Loader=SafeLoader),
         }
+
+    return credentials
+
+
+# Fetching the credentials and creating config dictionary
+credentials = load_credentials_from_sheet()
+config = {
+    "credentials": credentials,
+    "cookie": {
+        "name": "auth_cookie",
+        "key": "some_secret_key",
+        "expiry_days": 30,
     }
+}
 
-    authenticator = stauth.Authenticate(
-        config["credentials"],
-        config["cookie"]["name"],
-        config["cookie"]["key"],
-        config["cookie"]["expiry_days"]
-    )
-else:
-    st.write("Can't load config")
-
-
-# Creating a login widget
-try:
-    authenticator.login()
-    user_data = load_credentials_from_sheet(st.session_state["username"])
-    try:
-        st.session_state = dict_to_session_state(user_data)
-    except:
-        st.write("Can't load user settings")
-except Exception as e:
-    st.write(e)
+authenticator = stauth.Authenticate(
+    config["credentials"],
+    config["cookie"]["name"],
+    config["cookie"]["key"],
+    config["cookie"]["expiry_days"]
+)
 
 # Authenticating user
 if st.session_state['authentication_status']:
@@ -196,6 +201,13 @@ if st.session_state['authentication_status']:
         st.rerun()
 
     try:
+
+        # Fetch user data once
+        try:
+            user_data = get_user_data(st.session_state["username"])
+        except Exception as e:
+            st.error(f"Failed to load user data: {e}")
+
         st.write(user_data)
         st.write("Your genre watcher settings",
                  user_data["credentials"]["usernames"][st.session_state['username']]["settings_discount"])
@@ -207,30 +219,60 @@ if st.session_state['authentication_status']:
     except:
         st.write("No wishlist watcher settings stored")
 
+    # Creating a password reset widget
+    if st.session_state['authentication_status']:
+        try:
+            if authenticator.reset_password(st.session_state['username']):
+                st.success('Password modified successfully')
+        except (CredentialsError, ResetError) as e:
+            st.error(e)
 
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
+
+    # Creating a login widget
+    try:
+        authenticator.login()
+        load_and_apply_settings_to_widgets(st.session_state["username"], os.path.basename(__file__))
+    except Exception as e:
+        st.write(e)
+
 elif st.session_state['authentication_status'] is None:
     st.warning('Please enter your username and password')
 
-# Creating a password reset widget
-if st.session_state['authentication_status']:
+    # Creating a login widget
     try:
-        if authenticator.reset_password(st.session_state['username']):
-            st.success('Password modified successfully')
-    except (CredentialsError, ResetError) as e:
-        st.error(e)
+        authenticator.login()
+        load_and_apply_settings_to_widgets(st.session_state["username"], os.path.basename(__file__))
+    except Exception as e:
+        st.write(e)
 
-# Creating a new user registration widget
-if not st.session_state['authentication_status']:
-    try:
-        (email_of_registered_user,
-         username_of_registered_user,
-         name_of_registered_user) = authenticator.register_user(captcha=False, clear_on_submit=True)
-        if email_of_registered_user:
-            st.success('User registered successfully')
-    except RegisterError as e:
-        st.error(e)
+    # Registration widget
+    if not st.session_state.get("authentication_status"):
+        try:
+            email, username, name = authenticator.register_user(captcha=False, clear_on_submit=True)
 
-with open('config.yaml', 'w') as file:
-    yaml.dump(config, file, default_flow_style=False)
+            if email:
+                st.success("User registered successfully!")
+
+                # Hash the password
+                hashed_password = stauth.Hasher([email]).generate()[0]
+
+                # Prepare the data for Google Sheets
+                new_user_data = [
+                    username,
+                    email,
+                    name,
+                    hashed_password,
+                    0,  # failed_login_attempts
+                    False,  # logged_in status
+                    yaml.dump(DEFAULT_DISCOUNT_SETTINGS),  # Dump default settings to YAML format
+                    yaml.dump(DEFAULT_WISHLIST_SETTINGS)
+                ]
+
+                # Append the new user data to Google Sheets
+                sheet.append_row(new_user_data)
+                st.success("User credentials saved to Google Sheets with default settings.")
+
+        except RegisterError as e:
+            st.error(e)
