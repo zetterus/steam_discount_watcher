@@ -1,19 +1,11 @@
 import yaml
 import streamlit as st
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2.service_account import Credentials
 from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
 import datetime as dt
 import os
-from streamlit_authenticator.utilities import (CredentialsError,
-                                               ForgotError,
-                                               Hasher,
-                                               LoginError,
-                                               RegisterError,
-                                               ResetError,
-                                               UpdateError)
+
 
 # Default settings for new users
 DEFAULT_DISCOUNT_SETTINGS = {
@@ -185,20 +177,10 @@ config = {
     }
 }
 
-authenticator = stauth.Authenticate(
-    config["credentials"],
-    config["cookie"]["name"],
-    config["cookie"]["key"],
-    config["cookie"]["expiry_days"]
-)
-
 # Authenticating user
 if st.session_state['authentication_status']:
     st.write(f'Welcome **{st.session_state["name"]}**')
 
-    if authenticator.logout():
-        st.session_state.clear()
-        st.rerun()
 
     try:
 
@@ -221,58 +203,25 @@ if st.session_state['authentication_status']:
 
     # Creating a password reset widget
     if st.session_state['authentication_status']:
-        try:
-            if authenticator.reset_password(st.session_state['username']):
-                st.success('Password modified successfully')
-        except (CredentialsError, ResetError) as e:
-            st.error(e)
+        pass
+
 
 elif st.session_state['authentication_status'] is False:
     st.error('Username/password is incorrect')
 
     # Creating a login widget
-    try:
-        authenticator.login()
-        load_and_apply_settings_to_widgets(st.session_state["username"], os.path.basename(__file__))
-    except Exception as e:
-        st.write(e)
+
 
 elif st.session_state['authentication_status'] is None:
     st.warning('Please enter your username and password')
 
     # Creating a login widget
     try:
-        authenticator.login()
+
         load_and_apply_settings_to_widgets(st.session_state["username"], os.path.basename(__file__))
     except Exception as e:
         st.write(e)
 
     # Registration widget
-    if not st.session_state.get("authentication_status"):
-        try:
-            email, username, name = authenticator.register_user(captcha=False, clear_on_submit=True)
 
-            if email:
-                st.success("User registered successfully!")
 
-                # Hash the password
-                hashed_password = stauth.Hasher([email]).generate()[0]
-
-                # Prepare the data for Google Sheets
-                new_user_data = [
-                    username,
-                    email,
-                    name,
-                    hashed_password,
-                    0,  # failed_login_attempts
-                    False,  # logged_in status
-                    yaml.dump(DEFAULT_DISCOUNT_SETTINGS),  # Dump default settings to YAML format
-                    yaml.dump(DEFAULT_WISHLIST_SETTINGS)
-                ]
-
-                # Append the new user data to Google Sheets
-                sheet.append_row(new_user_data)
-                st.success("User credentials saved to Google Sheets with default settings.")
-
-        except RegisterError as e:
-            st.error(e)
