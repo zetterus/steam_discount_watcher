@@ -172,3 +172,76 @@ else:
                 register_user(username, email, username, password)
             else:
                 st.error("Passwords do not match.")
+
+
+
+
+____________________________________________________________________________________________________________
+def upsert_user_data(username, name, email, hashed_password, settings_discount=None, settings_wishlist=None):
+    users = sheet.get_all_records()  # Get all existing user data
+    user_exists = False
+    row_index = 0  # Variable to track the row index if the user is found
+
+    # Search for the username in existing records
+    for i, user in enumerate(users, start=2):  # Start at row 2 for data rows
+        if user["username"] == username:
+            user_exists = True
+            row_index = i
+            break
+
+    # Prepare the data for the user
+    user_row = [username, name, email, hashed_password, str(settings_discount or {}), str(settings_wishlist or {})]
+
+    # Update if user exists, or append if not
+    if user_exists:
+        # Overwrite the row if user exists
+        sheet.update(f'A{row_index}:H{row_index}', [user_row])
+        st.success(f"Updated data for user '{username}'.")
+    else:
+        # Append a new row if user does not exist
+        sheet.append_row(user_row)
+        st.success(f"Added new user '{username}'.")
+
+def load_and_apply_settings_to_widgets(username, current_filename):
+    user_settings = get_user_from_gsheet(username)
+
+    if user_settings:
+        if current_filename == "steamdiscountwatcher.py":
+            st.session_state["game_tag_id"] = user_settings.get("settings_discount", {}).get("game_tag_id", "")
+            st.session_state["is_discounted_index"] = user_settings.get("settings_discount", {}).get(
+                "is_discounted_index", 0)
+            st.session_state["selected_days_cron"] = user_settings.get("settings_discount", {}).get(
+                "selected_days_cron", [])
+            scheduled_time = user_settings.get("settings_discount", {}).get("scheduled_time", "12:00")
+            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
+
+        elif current_filename == "wishlistwatcher.py":
+            st.session_state["user_id"] = user_settings.get("settings_wishlist", {}).get("user_id", "")
+            st.session_state["game_tag"] = user_settings.get("settings_wishlist", {}).get("game_tag", "")
+            st.session_state["selected_days_cron"] = user_settings.get("settings_wishlist", {}).get(
+                "selected_days_cron", [])
+            scheduled_time = user_settings.get("settings_wishlist", {}).get("scheduled_time", "12:00")
+            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
+        else:
+            st.write("Error: can't apply settings.")
+    else:
+        st.write("No settings found for the user.")
+
+
+def session_state_to_dict(session_state):
+    # Convert SessionStateProxy object to a dictionary
+    data = {}
+    for key, value in session_state.items():
+        # Handle different data types appropriately
+        data[key] = value
+    return {st.session_state: data}
+
+
+# Custom deserialization function
+def dict_to_session_state(data):
+    # Convert dictionary back to a SessionStateProxy object
+    session_state = st.session_state
+    for key, value in data.items():
+        # Set values in SessionStateProxy
+        session_state[key] = value
+    return session_state
