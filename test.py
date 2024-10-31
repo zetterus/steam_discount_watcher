@@ -7,12 +7,9 @@ from google.oauth2.service_account import Credentials
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 
-# Google Sheets setup
+
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
-    scopes=scope
-)
+creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"]).sheet1
 
@@ -122,8 +119,8 @@ if st.session_state["is_authenticated"]:
     st.write(f"Добро пожаловать, {st.session_state['user']['name']}!")
 
     # Display settings
-    discount_settings = load_user_settings(st.session_state["user"]["username"], "settings_discount")
-    wishlist_settings = load_user_settings(st.session_state["user"]["username"], "settings_wishlist")
+    discount_settings = load_user_settings(st.session_state["user"]["username"], "wishlistwatcher.py")
+    wishlist_settings = load_user_settings(st.session_state["user"]["username"], "steamdiscountwatcher.py")
     st.write("Ваши настройки скидок:", discount_settings)
     st.write("Ваши настройки списка желаемого:", wishlist_settings)
 
@@ -143,7 +140,7 @@ if st.session_state["is_authenticated"]:
 
     if st.button("Log out"):
         time.sleep(3)
-        logout_user(st.session_state["user"]["username"], os.path.basename(__file__))
+        logout_user(st.session_state["user"]["username"], "steamdiscountwatcher.py")  # os.path.basename(__file__)
 
 
 else:
@@ -153,8 +150,11 @@ else:
         password = st.text_input("Пароль", key="password", type="password")
 
         if st.form_submit_button("Log in"):
-            login_user(username, password)
-            load_settings(username, os.path.basename(__file__))
+            if username and password:
+                login_user(username, password)
+                load_settings(username, "steamdiscountwatcher.py")  # os.path.basename(__file__)
+            else:
+                st.error("You need to enter credentials")
 
     with st.form("registration_form"):
         username = st.text_input("Username")
