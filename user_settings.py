@@ -1,5 +1,4 @@
 import time
-import os
 import datetime as dt
 import streamlit as st
 import gspread
@@ -26,7 +25,7 @@ def get_user_data(username):
 def register_user(username, email, name, password):
     """Register a new user in Google Sheets."""
     if get_user_data(username):
-        st.warning("Пользователь с таким именем уже существует.")
+        st.warning("User already exists.")
     else:
         password_hash = generate_password_hash(password)
         new_user_data = {
@@ -38,96 +37,73 @@ def register_user(username, email, name, password):
             "settings_wishlist": json.dumps({})
         }
         sheet.append_row(list(new_user_data.values()))
-        st.success("Пользователь успешно зарегистрирован!")
+        st.success("Registration successfull!")
 
 
-def login_user(username, password):
-    """Authenticate user by comparing entered password with stored hash."""
-    user = get_user_data(username)
-    if user and check_password_hash(user["password_hash"], password):
-        st.session_state["user"] = user
-        st.session_state["is_authenticated"] = True
-    else:
-        st.error("Неправильное имя пользователя или пароль.")
-        st.session_state["is_authenticated"] = False
-    st.rerun()
+# def login_user(username, password):
+#     """Authenticate user by comparing entered password with stored hash."""
+#     user = get_user_data(username)
+#     if user and check_password_hash(user["password_hash"], password):
+#         st.session_state["username"] = user["username"]
+#         st.session_state["is_authenticated"] = True
+#     else:
+#         st.error("Wrong username or password.")
+#         st.session_state["is_authenticated"] = False
+#     st.rerun()
 
 
-def logout_user(username, current_filename):
-    user_settings = load_user_settings(username, current_filename)
-    for key in list(user_settings.keys()):
-        del st.session_state[key]
-    st.session_state["user"] = None
-    st.session_state["is_authenticated"] = False
-    st.success("You successfully log out.")
-    time.sleep(3)
-    st.rerun()  # Перезагружает страницу, чтобы отобразить пустое состояние
+def apply_settings(username):
+    try:
+        # Loading data from Google Sheet
+        users = sheet.get_all_records()
+        # Looking for user by name
+        for i, user in enumerate(users, start=2):  # Start with second row for data
+            if user["username"] == username:
+                st.session_state = json.loads(user["settings"])
+                st.success("User settings applied successfully!")
+    except:
+        st.error("Can't apply user settings.")
 
 
-def apply_settings(username, current_filename):
-    user_settings = load_user_settings(username, current_filename)
+def save_user_settings(username):
+    try:
+        settings_str = json.dumps(str(st.session_state))
+        # Loading data from Google Sheet
+        users = sheet.get_all_records()
+        # Looking for user by name
+        for i, user in enumerate(users, start=2):  # Start with second row for data
+            if user["username"] == username:
+                # Updating cell with user settings
+                sheet.update_cell(i, sheet.find("settings").col, settings_str)
+                st.success("User settings saved successfully!")
+                return
+    except:
+        st.error("Can't save user settings.")
 
-    if user_settings:
-        if current_filename == "steamdiscountwatcher.py":
-            st.session_state["game_tag_id"] = user_settings.get("settings_discount", {}).get("game_tag_id", "")
-            st.session_state["is_discounted_index"] = user_settings.get("settings_discount", {}).get(
-                "is_discounted_index", 0)
-            st.session_state["selected_days_cron"] = user_settings.get("settings_discount", {}).get(
-                "selected_days_cron", [])
-            scheduled_time = user_settings.get("settings_discount", {}).get("scheduled_time", "12:00")
-            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
 
-        elif current_filename == "wishlistwatcher.py":
-            st.session_state["user_id"] = user_settings.get("settings_wishlist", {}).get("user_id", "")
-            st.session_state["game_tag"] = user_settings.get("settings_wishlist", {}).get("game_tag", "")
-            st.session_state["selected_days_cron"] = user_settings.get("settings_wishlist", {}).get(
-                "selected_days_cron", [])
-            scheduled_time = user_settings.get("settings_wishlist", {}).get("scheduled_time", "12:00")
-            st.session_state["scheduled_time"] = dt.datetime.strptime(scheduled_time, "%H:%M").time()
-        else:
-            st.write("Error: can't apply settings.")
-    else:
-        st.write("No settings found for the user.")
+def load_user_settings(username):
+    try:
+        # Loading data from Google Sheet
+        users = sheet.get_all_records()
+        # Looking for user by name
+        for i, user in enumerate(users, start=2):  # Start with second row for data
+            if user["username"] == username:
+                return json.loads(user["settings"])
+
+    except:
+        st.error("Can't display user settings.")
 
 
 # Functions for import
-def save_user_settings(username, settings, settings_type):
+# Func to save any user value except options
+def save_user_cred(username, settings, settings_type):
     """Save user settings in Google Sheets."""
     users = sheet.get_all_records()
     for i, user in enumerate(users, start=2):
         if user["username"] == username:
-            current_settings = json.loads(user[settings_type])
-            current_settings.update(settings)
-            sheet.update_cell(i, sheet.find(settings_type).col, json.dumps(current_settings))
-            st.success("Настройки успешно сохранены!")
+            sheet.update_cell(i, sheet.find(settings_type).col, str(settings))
+            st.success("Settings successfully saved!")
             break
-
-
-def load_user_settings(username, settings_type):
-    """Load user settings from Google Sheets."""
-    user = get_user_data(username)
-    if user:
-        return json.loads(user[settings_type])
-    return {}
-
-
-def session_state_to_dict(session_state):
-    # Convert SessionStateProxy object to a dictionary
-    data = {}
-    for key, value in session_state.items():
-        # Handle different data types appropriately
-        data[key] = value
-    return {st.session_state: data}
-
-
-# Custom deserialization function
-def dict_to_session_state(data):
-    # Convert dictionary back to a SessionStateProxy object
-    session_state = st.session_state
-    for key, value in data.items():
-        # Set values in SessionStateProxy
-        session_state[key] = value
-    return session_state
 
 
 # Streamlit UI
@@ -135,35 +111,50 @@ if "is_authenticated" not in st.session_state:
     st.session_state["is_authenticated"] = False
 
 if st.session_state["is_authenticated"]:
-    st.write(f"Добро пожаловать, {st.session_state['user']['name']}!")
-
+    print(st.session_state)
+    st.write(f"Welcome, {st.session_state["username"]}!")
     # Display settings
-    discount_settings = load_user_settings(st.session_state["user"]["username"], "wishlistwatcher.py")
-    wishlist_settings = load_user_settings(st.session_state["user"]["username"], "steamdiscountwatcher.py")
-    st.write("Ваши настройки скидок:", discount_settings)
-    st.write("Ваши настройки списка желаемого:", wishlist_settings)
+    settings_tuple = load_user_settings(st.session_state["username"])
+    if settings_tuple:
+        st.write("Your discount settings:", settings_tuple[0])
+        st.write("Your wishlist settings:", settings_tuple[1])
+    else:
+        st.warning("No settings stored.")
 
     # Form to reset password
-    new_password = st.text_input("Новый пароль", type="password")
-    if st.button("Сменить пароль"):
-        save_user_settings(st.session_state["user"]["username"],
-                           {"password_hash": generate_password_hash(new_password)}, "password_hash")
-        st.success("Пароль успешно обновлен.")
+    with st.form("Password change form"):
+        new_password = st.text_input("New password", type="password")
+        new_password_confirmation = st.text_input("New password confirmation", type="password")
+        if st.form_submit_button("Change password") and new_password == new_password_confirmation:
+            save_user_cred(st.session_state["username"],
+                           generate_password_hash(new_password), "password_hash")
+            st.success("Password successfully saved.")
 
     if st.button("Log out"):
-        time.sleep(3)
-        logout_user(st.session_state["user"]["username"], os.path.basename(__file__))
+        st.session_state.clear()
+        st.rerun()
 
 else:
+    print(st.session_state)
     with st.form("login_form"):
-        st.write("Войдите в аккаунт или зарегистрируйтесь")
-        username = st.text_input("Имя пользователя", key="username")
-        password = st.text_input("Пароль", key="password", type="password")
+        st.write("Login Form")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submit = st.form_submit_button("Log in")
 
-        if st.form_submit_button("Log in"):
+        # Login check
+        if submit:
             if username and password:
-                login_user(username, password)
-                load_settings(username, os.path.basename(__file__))
+                # login_user(username, password)
+                apply_settings(username)
+                user = get_user_data(username)
+                if user and check_password_hash(user["password_hash"], password):
+                    st.session_state["username"] = username
+                    st.session_state["is_authenticated"] = True
+                else:
+                    st.error("Wrong username or password.")
+                    st.session_state["is_authenticated"] = False
+                st.rerun()
             else:
                 st.error("You need to enter credentials")
 
@@ -174,7 +165,7 @@ else:
         confirm_password = st.text_input("Confirm Password", type="password")
 
         # Кнопка отправки внутри формы
-        submitted = st.form_submit_button("Зарегистрироваться")
+        submitted = st.form_submit_button("Submit")
 
         # Логика при отправке формы
         if submitted:
@@ -183,3 +174,4 @@ else:
                 register_user(username, email, username, password)
             else:
                 st.error("Passwords do not match.")
+

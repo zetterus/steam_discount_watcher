@@ -220,7 +220,7 @@ else:
         # Manage button presses
         if subcol1.button("Save settings"):
             if query_check():
-                save_user_settings(os.path.basename(__file__))
+                save_user_settings(st.session_state["username"])
             else:
                 st.write("query_check not succesfull")
         if subcol1.button("Load settings"):
@@ -238,3 +238,6 @@ else:
             col2.write("Watcher successfully started.")
             time.sleep(1)
             st.rerun()
+
+
+
