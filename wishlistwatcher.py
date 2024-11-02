@@ -6,7 +6,7 @@ import json
 import time
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
-from user_settings import save_user_settings, load_user_settings, session_state_to_dict, dict_to_session_state, get_user_data
+from user_settings import save_user_settings
 
 
 # Initialize scheduler
@@ -132,13 +132,13 @@ day_mapping_reverse = {
 }
 
 if "selected_days_cron" not in st.session_state:
-    st.session_state.selected_days_cron = ["mon"]
+    st.session_state["selected_days_cron"] = None
 
-# if "selected_days" not in st.session_state:
-st.session_state.selected_days = [day_mapping_reverse[day] for day in st.session_state.selected_days_cron]
+if "selected_days_w" not in st.session_state:
+    st.session_state.selected_days = None
 
 if "scheduled_time" not in st.session_state:
-    st.session_state.scheduled_time = dt.time(12, 0)
+    st.session_state.scheduled_time_w = dt.time(12, 0)
 
 # Genre list
 genres = ["Action", "Indie", "Adventure", "Casual", "RPG", "Strategy", "Simulation", "Early Access", "Free to Play",
@@ -157,8 +157,8 @@ if st.session_state.running:
 
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
-    st.session_state.user_id = col1.text_input("Enter user SteamID64(ex., 76561198120742945):", value=st.session_state.user_id)
-    st.session_state.game_tag = col1.text_input("Enter game genre:", value=st.session_state.game_tag)
+    st.session_state["user_id"] = col1.text_input("Enter user SteamID64(ex., 76561198120742945):", value=st.session_state["user_id"])
+    st.session_state["game_tag"] = col1.text_input("Enter game genre:", value=st.session_state["game_tag"])
 
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     selected_days = col1.multiselect("Select the days of the week:", days_of_week,
@@ -185,16 +185,19 @@ else:
                 save_user_settings(os.path.basename(__file__))
             else:
                 st.write("query_check not succesfull")
-        if subcol1.button("Load settings"):
-            try:
-                user_settings = load_user_settings(os.path.basename(__file__))
-            except:
-                st.write("No settings found")
-            if user_settings:
-                load_and_apply_settings_to_widgets(user_settings, os.path.basename(__file__))
-            st.rerun()
         if subcol2.button("Run watcher now"):
             query_check()
             st.session_state.running = True
             time.sleep(2)
             st.rerun()
+
+
+
+# Initializing state and tracking reload
+if "page_reloaded" not in st.session_state:
+    st.session_state["page_reloaded"] = False
+
+# State check and single reload
+if not st.session_state["page_reloaded"]:
+    st.session_state["page_reloaded"] = True
+    st.rerun()

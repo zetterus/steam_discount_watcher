@@ -13,6 +13,7 @@ sheet = client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"]).
 
 
 # Utility functions
+@st.cache_data
 def get_user_data(username):
     """Fetch user data from Google Sheets by username."""
     users = sheet.get_all_records()
@@ -22,6 +23,7 @@ def get_user_data(username):
     return None
 
 
+@st.cache_data
 def register_user(username, email, name, password):
     """Register a new user in Google Sheets."""
     if get_user_data(username):
@@ -33,13 +35,16 @@ def register_user(username, email, name, password):
             "email": email,
             "name": name,
             "password_hash": password_hash,
-            "settings_discount": json.dumps({}),
-            "settings_wishlist": json.dumps({})
+            "settings": json.dumps(
+                {"game_tag_id": "", "is_discounted_index": 0, "selected_days_g": None,
+                 "scheduled_time_g": "12:00", "user_id": "", "game_tag": "",
+                 "selected_days_w": None, "scheduled_time_w": "12:00"}),
         }
         sheet.append_row(list(new_user_data.values()))
-        st.success("Registration successfull!")
+        st.success("Registered successfully.")
 
 
+# @st.cache_data
 # def login_user(username, password):
 #     """Authenticate user by comparing entered password with stored hash."""
 #     user = get_user_data(username)
@@ -51,7 +56,7 @@ def register_user(username, email, name, password):
 #         st.session_state["is_authenticated"] = False
 #     st.rerun()
 
-
+@st.cache_data
 def apply_settings(username):
     try:
         # Loading data from Google Sheet
@@ -59,15 +64,20 @@ def apply_settings(username):
         # Looking for user by name
         for i, user in enumerate(users, start=2):  # Start with second row for data
             if user["username"] == username:
-                st.session_state = json.loads(user["settings"])
-                st.success("User settings applied successfully!")
+                for key, value in json.loads(user["settings"]).items():
+                    if key in ("scheduled_time_g", "scheduled_time_w"):
+                        st.session_state[key] = dt.datetime.strptime(value, "%H:%M")
+                    else:
+                        st.session_state[key] = value
     except:
         st.error("Can't apply user settings.")
 
 
+@st.cache_data
 def save_user_settings(username):
+    settings_str = "{" + ", ".join(str(key) + ": " + str(value) for key, value in st.session_state.items()) + "}"
+    settings_str = json.dumps(settings_str)
     try:
-        settings_str = json.dumps(str(st.session_state))
         # Loading data from Google Sheet
         users = sheet.get_all_records()
         # Looking for user by name
@@ -76,26 +86,27 @@ def save_user_settings(username):
                 # Updating cell with user settings
                 sheet.update_cell(i, sheet.find("settings").col, settings_str)
                 st.success("User settings saved successfully!")
-                return
     except:
         st.error("Can't save user settings.")
 
 
+@st.cache_data
 def load_user_settings(username):
-    try:
-        # Loading data from Google Sheet
-        users = sheet.get_all_records()
-        # Looking for user by name
-        for i, user in enumerate(users, start=2):  # Start with second row for data
-            if user["username"] == username:
-                return json.loads(user["settings"])
+    # try:
+    # Loading data from Google Sheet
+    users = sheet.get_all_records()
+    # Looking for user by name
+    for i, user in enumerate(users, start=2):  # Start with second row for data
+        if user["username"] == username:
+            return json.loads(user["settings"])
 
-    except:
-        st.error("Can't display user settings.")
+    # except:
+    #     st.error("Can't load user settings.")
 
 
 # Functions for import
 # Func to save any user value except options
+@st.cache_data
 def save_user_cred(username, settings, settings_type):
     """Save user settings in Google Sheets."""
     users = sheet.get_all_records()
@@ -111,13 +122,12 @@ if "is_authenticated" not in st.session_state:
     st.session_state["is_authenticated"] = False
 
 if st.session_state["is_authenticated"]:
-    print(st.session_state)
     st.write(f"Welcome, {st.session_state["username"]}!")
     # Display settings
     settings_tuple = load_user_settings(st.session_state["username"])
     if settings_tuple:
-        st.write("Your discount settings:", settings_tuple[0])
-        st.write("Your wishlist settings:", settings_tuple[1])
+        st.write("Your discount settings:", settings_tuple)
+        # st.write("Your wishlist settings:", settings_tuple[1])
     else:
         st.warning("No settings stored.")
 
@@ -135,8 +145,7 @@ if st.session_state["is_authenticated"]:
         st.rerun()
 
 else:
-    print(st.session_state)
-    with st.form("login_form"):
+    with st.form("login_form", clear_on_submit=True):
         st.write("Login Form")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -145,20 +154,23 @@ else:
         # Login check
         if submit:
             if username and password:
-                # login_user(username, password)
-                apply_settings(username)
                 user = get_user_data(username)
-                if user and check_password_hash(user["password_hash"], password):
-                    st.session_state["username"] = username
-                    st.session_state["is_authenticated"] = True
+                if user:
+                    # login_user(username, password)
+                    apply_settings(username)
+                    if user and check_password_hash(user["password_hash"], password):
+                        st.session_state["username"] = username
+                        st.session_state["is_authenticated"] = True
+                    else:
+                        st.error("Wrong username or password.")
+                        st.session_state["is_authenticated"] = False
+                    st.rerun()
                 else:
-                    st.error("Wrong username or password.")
-                    st.session_state["is_authenticated"] = False
-                st.rerun()
+                    st.error("No user found.")
             else:
                 st.error("You need to enter credentials")
 
-    with st.form("registration_form"):
+    with st.form("registration_form", clear_on_submit=True):
         username = st.text_input("Username")
         email = st.text_input("Email")
         password = st.text_input("Password", type="password")
@@ -170,8 +182,6 @@ else:
         # Логика при отправке формы
         if submitted:
             if password == confirm_password:
-                st.success("User registered successfully")
                 register_user(username, email, username, password)
             else:
                 st.error("Passwords do not match.")
-
