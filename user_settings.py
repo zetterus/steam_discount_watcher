@@ -1,4 +1,3 @@
-import time
 import datetime as dt
 import streamlit as st
 import gspread
@@ -69,14 +68,19 @@ def apply_settings(username):
                         st.session_state[key] = dt.datetime.strptime(value, "%H:%M")
                     else:
                         st.session_state[key] = value
+        print("applying success")
     except:
         st.error("Can't apply user settings.")
 
 
 @st.cache_data
 def save_user_settings(username):
-    settings_str = "{" + ", ".join(str(key) + ": " + str(value) for key, value in st.session_state.items()) + "}"
-    settings_str = json.dumps(settings_str)
+    def custom_encoder(obj):
+        if isinstance(obj, dt.datetime):
+            return obj.isoformat()  # Преобразуем время в строку
+        raise TypeError(f"Type {type(obj)} is not JSON serializable")
+    # Преобразуем st.session_state в JSON-строку
+    st_state_json = json.dumps(st.session_state, default=custom_encoder, indent=2)
     try:
         # Loading data from Google Sheet
         users = sheet.get_all_records()
@@ -84,7 +88,7 @@ def save_user_settings(username):
         for i, user in enumerate(users, start=2):  # Start with second row for data
             if user["username"] == username:
                 # Updating cell with user settings
-                sheet.update_cell(i, sheet.find("settings").col, settings_str)
+                sheet.update_cell(i, sheet.find("settings").col, st_state_json)
                 st.success("User settings saved successfully!")
     except:
         st.error("Can't save user settings.")
@@ -98,7 +102,10 @@ def load_user_settings(username):
     # Looking for user by name
     for i, user in enumerate(users, start=2):  # Start with second row for data
         if user["username"] == username:
-            return json.loads(user["settings"])
+            loa = json.loads(user["settings"])
+            print(loa)
+            print(type(loa))
+            return loa
 
     # except:
     #     st.error("Can't load user settings.")

@@ -177,8 +177,8 @@ day_mapping_reverse = {
     'sun': 'Sunday'
 }
 
-if "selected_days_cron" not in st.session_state:
-    st.session_state.selected_days_cron = None
+# if "selected_days_cron_g" not in st.session_state:
+#     st.session_state.selected_days_cron_g = None
 
 if "selected_days_g" not in st.session_state:
     st.session_state.selected_days_g = None

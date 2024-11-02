@@ -1,3 +1,4 @@
+import datetime
 import time
 import os
 import datetime as dt
@@ -6,6 +7,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
+
 
 # scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 # creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -16,6 +18,11 @@ import json
 # users = sheet.get_all_records()
 # print(users)
 
-d = dt.datetime.strptime("12:11", "%H:%M")
 
-print(d)
+st.write({'user_id': '', 'game_tag_id': 122, 'scheduled_time_w': '12:00', 'selected_days_cron': ['tue', 'wed'], 'scheduled_time': '13:00', 'selected_days': ['Tuesday', 'Wednesday'], 'is_discounted': 'yes', 'game_tag': '', 'selected_days_w': None, 'scheduled_time_g': '12:00', 'selected_days_g': None, 'page_reloaded': True, 'is_authenticated': True, 'is_discounted_index': 0, 'running': False, 'username': 'zetter'})
+
+# print(json.loads())
+print(json.dumps("{user_id: , game_tag_id: 122, scheduled_time_w: 1900-01-01 12:00:00, selected_days_cron: ['tue', 'wed'], scheduled_time: 13:00:00, selected_days: ['Tuesday', 'Wednesday'], is_discounted: yes, game_tag: , selected_days_w: None, scheduled_time_g: 1900-01-01 12:00:00, selected_days_g: None, page_reloaded: True, is_authenticated: True, is_discounted_index: 0, running: False, username: zetter}"))
+
+
+
