@@ -6,7 +6,13 @@ from bs4 import BeautifulSoup
 import requests
 import json
 from apscheduler.schedulers.background import BackgroundScheduler
+from streamlit_cookies_controller import CookieController
 from user_settings import save_user_settings
+
+cookie_controller = CookieController()
+if "auth_status" in cookie_controller.getAll():
+    for k, v in cookie_controller.get("auth_status").items():
+        st.session_state[k] = v
 
 scheduler = BackgroundScheduler()
 
@@ -46,7 +52,7 @@ def query_check():
         valid = False
 
     # Check scheduled_time is a valid time object
-    if not isinstance(st.session_state.scheduled_time, dt.time):
+    if not isinstance(st.session_state.scheduled_time_g, dt.time):
         col1.write("Error: invalid time format.")
         valid = False
 
@@ -58,7 +64,6 @@ def query_check():
         st.session_state.running = False
         time.sleep(5)
         st.rerun()
-        # You can optionally clear the input fields here for a better user experience.
 
     return True
 
@@ -69,9 +74,9 @@ def start_watcher():
     scheduler.add_job(
         watcher,
         'cron',
-        hour=st.session_state.scheduled_time.hour,
-        minute=st.session_state.scheduled_time.minute,
-        day_of_week=','.join(st.session_state.selected_days_cron)  # Format: 'mon,tue,wed'
+        hour=st.session_state.scheduled_time_g.hour,
+        minute=st.session_state.scheduled_time_g.minute,
+        day_of_week=','.join(st.session_state.selected_days_cron_g)  # Format: 'mon,tue,wed'
     )
     scheduler.start()
 
@@ -126,6 +131,7 @@ def watcher():
 
             # continue to next page
             page_number += page_count
+            print(F"Page {str(page_number)[:2]} completed.")
         else:
             st.write(f"Query error: {response.status_code}")
             break
@@ -154,19 +160,6 @@ col1, col2 = st.columns(2)
 # genres ids
 col2.table(genres_df.set_index(genres_df.columns[0]))
 
-# app status checkup
-if 'running' not in st.session_state:
-    st.session_state.running = False
-
-if "game_tag_id" not in st.session_state:
-    st.session_state.game_tag_id = ""
-
-if "is_discounted" not in st.session_state:
-    st.session_state.is_discounted = "yes"
-
-if "is_discounted_index" not in st.session_state:
-    st.session_state.is_discounted_index = 0
-
 day_mapping_reverse = {
     'mon': 'Monday',
     'tue': 'Tuesday',
@@ -177,21 +170,19 @@ day_mapping_reverse = {
     'sun': 'Sunday'
 }
 
-# if "selected_days_cron_g" not in st.session_state:
-#     st.session_state.selected_days_cron_g = None
-
-if "selected_days_g" not in st.session_state:
-    st.session_state.selected_days_g = None
-
-if "scheduled_time_g" not in st.session_state:
-    st.session_state.scheduled_time_g = dt.time(12, 0)
+# Initialize session state
+if 'running' not in st.session_state:
+    st.session_state.running = False
 
 # 1st column
 # genre choose, discount, check time, check button
 # app status display
-# print(st.session_state)
 if st.session_state.running:
     col1.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
+    watcher()
+    if col1.button("Reset watcher"):
+        st.session_state.running = False
+        st.rerun()
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
     st.session_state.game_tag_id = col1.text_input("Enter game tag id:", value=st.session_state["game_tag_id"])
@@ -199,7 +190,7 @@ else:
                                index=st.session_state["is_discounted_index"])
     st.session_state.is_discounted_index = 0 if is_discounted == "yes" else 1
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    selected_days = col1.multiselect("Select the days of the week:", days_of_week,
+    selected_days_g = col1.multiselect("Select the days of the week:", days_of_week,
                                      default=st.session_state["selected_days_g"])
     day_mapping = {
         'Monday': 'mon',
@@ -210,18 +201,21 @@ else:
         'Saturday': 'sat',
         'Sunday': 'sun'
     }
-    st.session_state.selected_days_cron = [day_mapping[day] for day in
-                                           selected_days]  # convert selected days to cron format
-    st.session_state["scheduled_time"] = col1.time_input("Select the time to run the task (e.g., 14:30):",
-                                                         value=st.session_state["scheduled_time_g"], step=300)
+    st.session_state.selected_days_cron_g = [day_mapping[day] for day in
+                                             selected_days_g]  # convert selected days to cron format
+    scheduled_time_g = col1.time_input("Select the time to run the task (e.g., 14:30):",
+                                                         value=st.session_state.scheduled_time_g, step=300)
+
 
     with col1:
         subcol1, subcol2 = st.columns(2)
 
         # Manage button presses
         if subcol1.button("Save settings"):
+            st.session_state.selected_days_g = selected_days_g
+            st.session_state.scheduled_time_g = scheduled_time_g
             if query_check():
-                save_user_settings(st.session_state["username"])
+                save_user_settings(st.session_state.username)
             else:
                 st.write("query_check not succesfull")
         if subcol2.button("Run watcher now"):
@@ -231,6 +225,7 @@ else:
             col2.write("Watcher successfully started.")
             time.sleep(1)
             st.rerun()
+
 
 # Initializing state and tracking reload
 if "page_reloaded" not in st.session_state:

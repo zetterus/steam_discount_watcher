@@ -4,10 +4,14 @@ import datetime as dt
 import requests
 import json
 import time
-import os
 from apscheduler.schedulers.background import BackgroundScheduler
+from streamlit_cookies_controller import CookieController
 from user_settings import save_user_settings
 
+cookie_controller = CookieController()
+if "auth_status" in cookie_controller.getAll():
+    for k, v in cookie_controller.get("auth_status").items():
+        st.session_state[k] = v
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
@@ -36,12 +40,9 @@ def query_check():
         st.write("Error: invalid game tag.")
         valid = False
 
-    try:
-        if not (0 <= st.session_state.scheduled_time.hour < 24) or not (
-                0 <= st.session_state.scheduled_time.minute < 60):
-            raise ValueError("Invalid time.")
-    except ValueError:
-        st.write("Error: time is invalid.")
+    # Check scheduled_time is a valid time object
+    if not isinstance(st.session_state.scheduled_time_g, dt.time):
+        col1.write("Error: invalid time format.")
         valid = False
 
     if valid:
@@ -49,7 +50,10 @@ def query_check():
     else:
         st.write("Please fix the errors mentioned above.")
         st.session_state.running = False
+        time.sleep(5)
         st.rerun()
+
+    return True
 
 
 def start_watcher():
@@ -61,9 +65,9 @@ def start_watcher():
         scheduler.add_job(
             personal_watcher,
             'cron',
-            hour=st.session_state.scheduled_time.hour,
-            minute=st.session_state.scheduled_time.minute,
-            day_of_week=','.join(st.session_state.selected_days_cron)
+            hour=st.session_state.scheduled_time_w.hour,
+            minute=st.session_state.scheduled_time_w.minute,
+            day_of_week=','.join(st.session_state.selected_days_cron_g)
         )
 
     col1.write("Waiting for the scheduled task to run...")
@@ -111,16 +115,6 @@ def personal_watcher():
     st.dataframe(df)
 
 
-# Initialize session state
-if 'running' not in st.session_state:
-    st.session_state.running = False
-
-if "user_id" not in st.session_state:
-    st.session_state.user_id = ""
-
-if "game_tag" not in st.session_state:
-    st.session_state.game_tag = ""
-
 day_mapping_reverse = {
     'mon': 'Monday',
     'tue': 'Tuesday',
@@ -131,19 +125,14 @@ day_mapping_reverse = {
     'sun': 'Sunday'
 }
 
-if "selected_days_cron" not in st.session_state:
-    st.session_state["selected_days_cron"] = None
-
-if "selected_days_w" not in st.session_state:
-    st.session_state.selected_days = None
-
-if "scheduled_time" not in st.session_state:
-    st.session_state.scheduled_time_w = dt.time(12, 0)
-
 # Genre list
 genres = ["Action", "Indie", "Adventure", "Casual", "RPG", "Strategy", "Simulation", "Early Access", "Free to Play",
           "Sports"]
 genres_df = pd.DataFrame({'Genre': genres}, index=list(range(1, len(genres) + 1)))
+
+# Initialize session state
+if 'running' not in st.session_state:
+    st.session_state.running = False
 
 # Columns for UI
 col1, col2 = st.columns(2)
@@ -151,18 +140,19 @@ col2.table(genres_df)
 
 if st.session_state.running:
     col1.write("<h4>Watcher is running</h4>", unsafe_allow_html=True)
-    if st.session_state.run_btn_pressed:
-        col1.write("Watcher is running immediately...")
-        personal_watcher()
-
+    personal_watcher()
+    if col1.button("Reset watcher"):
+        st.session_state.running = False
+        st.rerun()
 else:
     col1.write("<h4>Watcher is not running</h4>", unsafe_allow_html=True)
-    st.session_state["user_id"] = col1.text_input("Enter user SteamID64(ex., 76561198120742945):", value=st.session_state["user_id"])
+    st.session_state["user_id"] = col1.text_input("Enter user SteamID64(ex., 76561198120742945):",
+                                                  value=st.session_state["user_id"])
     st.session_state["game_tag"] = col1.text_input("Enter game genre:", value=st.session_state["game_tag"])
 
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    selected_days = col1.multiselect("Select the days of the week:", days_of_week,
-                                     default=st.session_state.selected_days)
+    selected_days_w = col1.multiselect("Select the days of the week:", days_of_week,
+                                     default=st.session_state.selected_days_w)
     day_mapping = {
         'Monday': 'mon',
         'Tuesday': 'tue',
@@ -172,26 +162,26 @@ else:
         'Saturday': 'sat',
         'Sunday': 'sun'
     }
-    st.session_state.selected_days_cron = [day_mapping[day] for day in
-                                           selected_days]  # convert selected days to cron format
-    st.session_state.scheduled_time = col1.time_input("Select the time to run the task (e.g., 14:30):",
-                                                      value=st.session_state["scheduled_time"], step=300)
+    st.session_state.selected_days_cron_w = [day_mapping[day] for day in
+                                             selected_days_w]  # convert selected days to cron format
+    scheduled_time_w = col1.time_input("Select the time to run the task (e.g., 14:30):",
+                                                      value=st.session_state.scheduled_time_w, step=300)
 
     with col1:
         subcol1, subcol2 = st.columns(2)
 
         if subcol1.button("Save settings"):
+            st.session_state.selected_days_w = selected_days_w
+            st.session_state.scheduled_time_w = scheduled_time_w
             if query_check():
-                save_user_settings(os.path.basename(__file__))
+                save_user_settings(st.session_state.username)
             else:
-                st.write("query_check not succesfull")
+                st.write("query check is not successfull")
         if subcol2.button("Run watcher now"):
             query_check()
             st.session_state.running = True
             time.sleep(2)
             st.rerun()
-
-
 
 # Initializing state and tracking reload
 if "page_reloaded" not in st.session_state:
@@ -201,3 +191,4 @@ if "page_reloaded" not in st.session_state:
 if not st.session_state["page_reloaded"]:
     st.session_state["page_reloaded"] = True
     st.rerun()
+

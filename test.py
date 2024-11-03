@@ -1,28 +1,72 @@
-import datetime
-import time
-import os
-import datetime as dt
+# Author    : Nathan Chen
+# Date      : 08-Mar-2024
+
+
 import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
-from werkzeug.security import generate_password_hash, check_password_hash
-import json
+from datetime import datetime, timedelta
+from streamlit_cookies_controller import CookieController, RemoveEmptyElementContainer
 
+st.set_page_config('Cookie Controller Example', '🍪', layout='wide')
 
-# scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-# creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-# client = gspread.authorize(creds)
-# sheet = client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"]).sheet1
-#
-#
-# users = sheet.get_all_records()
-# print(users)
+RemoveEmptyElementContainer()
 
+# Count how many time the script run
+if 'count' not in st.session_state:
+    st.session_state['count'] = 0
+st.session_state['count'] += 1
+count = st.session_state['count']
 
-st.write({'user_id': '', 'game_tag_id': 122, 'scheduled_time_w': '12:00', 'selected_days_cron': ['tue', 'wed'], 'scheduled_time': '13:00', 'selected_days': ['Tuesday', 'Wednesday'], 'is_discounted': 'yes', 'game_tag': '', 'selected_days_w': None, 'scheduled_time_g': '12:00', 'selected_days_g': None, 'page_reloaded': True, 'is_authenticated': True, 'is_discounted_index': 0, 'running': False, 'username': 'zetter'})
+# declare the cookie controller
+controller = CookieController()
+brf, test, aft = st.columns([1, 1, 1])
 
-# print(json.loads())
-print(json.dumps("{user_id: , game_tag_id: 122, scheduled_time_w: 1900-01-01 12:00:00, selected_days_cron: ['tue', 'wed'], scheduled_time: 13:00:00, selected_days: ['Tuesday', 'Wednesday'], is_discounted: yes, game_tag: , selected_days_w: None, scheduled_time_g: 1900-01-01 12:00:00, selected_days_g: None, page_reloaded: True, is_authenticated: True, is_discounted_index: 0, running: False, username: zetter}"))
+tests = [
+    "Set Cookie",
+    "Get Cookie",
+    "Remove Cookie",
+    "Auto Renewal",
+]
 
+with brf:
+    st.markdown("### Streamlit session state (Before)")
+    st.write(st.session_state)
 
+with test:
+    selection = st.selectbox("Test", options=tests)
+    st.divider()
 
+    if selection == tests[0]:
+        st.markdown("### Test set cookie")
+        name = st.text_input("Cookie name")
+        value = st.text_input("Cookie value")
+        set = st.button("Set")
+        if set:
+            controller.set(name, value)
+    elif selection == tests[1]:
+        st.markdown("### Test get cookie")
+        name = st.text_input("Cookie name")
+        get = st.button("Get")
+        if get:
+            value = controller.get(name)
+            st.write(value)
+    elif selection == tests[2]:
+        st.markdown("### Test remove cookie")
+        name = st.text_input("Cookie name")
+        remove = st.button("Remove")
+        if remove:
+            controller.remove(name)
+    elif selection == tests[3]:
+        # simulate auto authentication renewal
+        st.markdown("### Test auto renew cookie expiry")
+        name = st.text_input("Cookie name")
+        expiry_date = datetime.now() + timedelta(days=1)
+        controller.set(name, {
+            "value": f"value_{count}",
+            "expiry_date": expiry_date.isoformat()
+        })
+        autorenew = st.button("Auto renew")
+        st.write(autorenew)
+
+with aft:
+    st.markdown("### Streamlit session state (After)")
+    st.write(st.session_state)
