@@ -14,11 +14,3 @@ pg = st.navigation(
     }
 )
 pg.run()
-
-# if "bugfix" not in st.session_state:
-#     st.session_state["bugfix"] = False
-#
-# if not st.session_state["bugfix"]:
-#     st.session_state["bugfix"] = True
-#     st.rerun()
-
