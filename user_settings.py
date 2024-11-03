@@ -1,3 +1,4 @@
+import time
 import datetime as dt
 import streamlit as st
 import gspread
@@ -202,6 +203,7 @@ else:
                         cookie_controller.set("auth_status", {"username": st.session_state.username,
                                                                 "is_authenticated": st.session_state.is_authenticated})
                     else:
+                        time.sleep(3)
                         st.error("Wrong username or password.")
                         st.session_state.is_authenticated = False
                     st.rerun()
