@@ -150,22 +150,22 @@ else:
                                                   value=st.session_state["user_id"])
     st.session_state["game_tag"] = col1.text_input("Enter game genre:", value=st.session_state["game_tag"])
 
-    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    selected_days_w = col1.multiselect("Select the days of the week:", days_of_week,
-                                     default=st.session_state.selected_days_w)
-    day_mapping = {
-        'Monday': 'mon',
-        'Tuesday': 'tue',
-        'Wednesday': 'wed',
-        'Thursday': 'thu',
-        'Friday': 'fri',
-        'Saturday': 'sat',
-        'Sunday': 'sun'
-    }
-    st.session_state.selected_days_cron_w = [day_mapping[day] for day in
-                                             selected_days_w]  # convert selected days to cron format
-    scheduled_time_w = col1.time_input("Select the time to run the task (e.g., 14:30):",
-                                                      value=st.session_state.scheduled_time_w, step=300)
+    # days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    # selected_days_w = col1.multiselect("Select the days of the week:", days_of_week,
+    #                                  default=st.session_state.selected_days_w)
+    # day_mapping = {
+    #     'Monday': 'mon',
+    #     'Tuesday': 'tue',
+    #     'Wednesday': 'wed',
+    #     'Thursday': 'thu',
+    #     'Friday': 'fri',
+    #     'Saturday': 'sat',
+    #     'Sunday': 'sun'
+    # }
+    # st.session_state.selected_days_cron_w = [day_mapping[day] for day in
+    #                                          selected_days_w]  # convert selected days to cron format
+    # scheduled_time_w = col1.time_input("Select the time to run the task (e.g., 14:30):",
+    #                                                   value=st.session_state.scheduled_time_w, step=300)
 
     with col1:
         subcol1, subcol2 = st.columns(2)

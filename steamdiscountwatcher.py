@@ -189,22 +189,22 @@ else:
     is_discounted = col1.radio("Search for discounted?", options=("yes", "no"),
                                index=st.session_state["is_discounted_index"])
     st.session_state.is_discounted_index = 0 if is_discounted == "yes" else 1
-    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    selected_days_g = col1.multiselect("Select the days of the week:", days_of_week,
-                                     default=st.session_state["selected_days_g"])
-    day_mapping = {
-        'Monday': 'mon',
-        'Tuesday': 'tue',
-        'Wednesday': 'wed',
-        'Thursday': 'thu',
-        'Friday': 'fri',
-        'Saturday': 'sat',
-        'Sunday': 'sun'
-    }
-    st.session_state.selected_days_cron_g = [day_mapping[day] for day in
-                                             selected_days_g]  # convert selected days to cron format
-    scheduled_time_g = col1.time_input("Select the time to run the task (e.g., 14:30):",
-                                                         value=st.session_state.scheduled_time_g, step=300)
+    # days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    # selected_days_g = col1.multiselect("Select the days of the week:", days_of_week,
+    #                                  default=st.session_state["selected_days_g"])
+    # day_mapping = {
+    #     'Monday': 'mon',
+    #     'Tuesday': 'tue',
+    #     'Wednesday': 'wed',
+    #     'Thursday': 'thu',
+    #     'Friday': 'fri',
+    #     'Saturday': 'sat',
+    #     'Sunday': 'sun'
+    # }
+    # st.session_state.selected_days_cron_g = [day_mapping[day] for day in
+    #                                          selected_days_g]  # convert selected days to cron format
+    # scheduled_time_g = col1.time_input("Select the time to run the task (e.g., 14:30):",
+    #                                                      value=st.session_state.scheduled_time_g, step=300)
 
 
     with col1:

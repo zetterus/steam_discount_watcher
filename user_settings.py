@@ -69,8 +69,9 @@ def apply_settings(username):
 
 
 def save_user_settings(username):
-    DEFAULT = {"game_tag_id": "", "is_discounted_index": 0, "selected_days_g": None, "scheduled_time_g": "12:00",
-               "user_id": "", "game_tag": "", "selected_days_w": None, "scheduled_time_w": "12:00"}
+    # DEFAULT = {"game_tag_id": "", "is_discounted_index": 0, "selected_days_g": None, "scheduled_time_g": "12:00",
+    #            "user_id": "", "game_tag": "", "selected_days_w": None, "scheduled_time_w": "12:00"}
+    DEFAULT = {"game_tag_id": "", "is_discounted_index": 0, "user_id": "", "game_tag": "",}
     settings_voc = {}
 
     def custom_encoder(obj):
