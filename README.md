@@ -42,7 +42,7 @@ To run the console version, use the following command:
 
 # Web Version
 
-The web version of Steam Discount Watcher is available at [[GitHub Pages](https://steamwatcher.streamlit.app/)](https://steamwatcher.streamlit.app/). This version does not include the scheduling feature but offers user authentication and the ability to save settings for authenticated users.
+The web version of Steam Discount Watcher is available at [https://steamwatcher.streamlit.app/](https://steamwatcher.streamlit.app/). This version does not include the scheduling feature but offers user authentication and the ability to save settings for authenticated users.
 
 ## Features
 
