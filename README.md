@@ -26,7 +26,28 @@ To install the console version, follow these steps:
   cd steam_discount_watcher
   ```
 
-3. Install the required dependencies:
+3. Virtual Environment: It is recommended to use a virtual environment to isolate project dependencies. You can create a virtual environment using the command:
+
+  ```
+  python -m venv venv
+  ```
+
+4. Then activate it:
+
+  On Windows:
+
+  ```
+  .\venv\Scripts\activate
+  ```
+
+  On Linux:
+
+  ```
+  source venv/bin/activate
+  ```
+
+  
+5. After activating the virtual environment, run the command::
 
   ```
   pip install -r requirements.txt
