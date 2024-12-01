@@ -34,13 +34,13 @@ To install the console version, follow these steps:
 
 4. Then activate it:
 
-  On Windows:
+- On Windows:
 
   ```
   .\venv\Scripts\activate
   ```
 
-  On Linux:
+- On Linux:
 
   ```
   source venv/bin/activate
