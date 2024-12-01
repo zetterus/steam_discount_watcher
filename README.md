@@ -34,7 +34,7 @@ To install the console version, follow these steps:
 
 ## Usage
 
-To run the console version, use the following command:
+To run the console version, use the following command from your project directory:
 
   ```
   python main.py
