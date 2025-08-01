@@ -1,3 +1,4 @@
 .idea/
 test.py
 steam-watcher-credentials-db0622d10a00.json
+.streamlit/secrets.toml
